@@ -25,7 +25,7 @@ func Solve2B(queue []objects.IHitObject) []objects.IHitObject {
 		// Looking just by i-1 (like i+1 in forward detection) wouldn't detect that scenario because objects
 		// are not sorted by end times
 		for j := i - 1; j >= 0; j-- {
-			if o := queue[i-1]; o.GetEndTime() >= s.GetStartTime() {
+			if o := queue[j]; o.GetEndTime() >= s.GetStartTime() {
 				queue = PreprocessQueue(i, queue, true)
 				found = true
 				break
