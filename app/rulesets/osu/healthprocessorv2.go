@@ -100,7 +100,7 @@ func (hp *HealthProcessorV2) CalculateRate() { //nolint:gocyclo
 
 		if ok {
 			for j := 0; j < len(s.ScorePointsLazer); j++ {
-				sc := s.ScorePoints[j]
+				sc := s.ScorePointsLazer[j]
 
 				result := SliderPoint
 
