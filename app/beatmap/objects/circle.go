@@ -17,7 +17,10 @@ import (
 	"github.com/wieku/danser-go/framework/math/vector"
 )
 
-const defaultCircleName = "hit"
+const (
+	defaultCircleName    = "hit"
+	defaultReverseBounce = 300
+)
 
 type Circle struct {
 	*HitObject
@@ -207,13 +210,17 @@ func (circle *Circle) SetDifficulty(diff *difficulty.Difficulty) {
 
 		circle.sprites = append(circle.sprites, circle.reverseArrow)
 
-		for t := circle.bounceStartTime; t < endTime; t += 300 {
-			length := min(300, endTime-t)
-			circle.reverseArrow.AddTransform(animation.NewSingleTransform(animation.Scale, easing.Linear, t, t+length, 1.3, 1.0))
+		rCount := int((endTime - circle.bounceStartTime) / defaultReverseBounce)
 
-			if skin.GetInfo().Version < 2 {
-				circle.reverseArrow.AddTransform(animation.NewSingleTransform(animation.Rotate, easing.Linear, t, t+length, 6*math.Pi/180, -6*math.Pi/180))
-			}
+		if rCount > 0 {
+			setReverse(circle.reverseArrow, circle.bounceStartTime, defaultReverseBounce, rCount)
+		}
+
+		rStart := circle.bounceStartTime + float64(rCount)*defaultReverseBounce
+		rTime := endTime - rStart
+
+		if rCount == 0 || rTime > 5 {
+			setReverse(circle.reverseArrow, rStart, rTime, 1)
 		}
 	} else {
 		circle.approachCircle = sprite.NewSpriteSingle(skin.GetTexture("approachcircle"), 0, vector.NewVec2d(0, 0), vector.Centre)
@@ -227,6 +234,20 @@ func (circle *Circle) SetDifficulty(diff *difficulty.Difficulty) {
 
 			circle.approachCircle.AddTransform(animation.NewSingleTransform(animation.Scale, easing.Linear, startTime, endTime, 4.0, 1.0))
 		}
+	}
+}
+
+func setReverse(arrow *sprite.Sprite, start float64, length float64, loops int) {
+	scale := animation.NewSingleTransform(animation.Scale, easing.Linear, start, start+length, 1.3, 1.0)
+	scale.SetLoop(loops, length)
+
+	arrow.AddTransform(scale)
+
+	if skin.GetInfo().Version < 2 {
+		rotate := animation.NewSingleTransform(animation.Rotate, easing.Linear, start, start+length, 6*math.Pi/180, -6*math.Pi/180)
+		rotate.SetLoop(loops, length)
+
+		arrow.AddTransform(rotate)
 	}
 }
 
