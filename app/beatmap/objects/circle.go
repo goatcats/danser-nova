@@ -1,6 +1,9 @@
 package objects
 
 import (
+	"math"
+	"strconv"
+
 	"github.com/wieku/danser-go/app/audio"
 	"github.com/wieku/danser-go/app/beatmap/difficulty"
 	"github.com/wieku/danser-go/app/settings"
@@ -12,8 +15,6 @@ import (
 	"github.com/wieku/danser-go/framework/math/animation/easing"
 	color2 "github.com/wieku/danser-go/framework/math/color"
 	"github.com/wieku/danser-go/framework/math/vector"
-	"math"
-	"strconv"
 )
 
 const defaultCircleName = "hit"
@@ -306,18 +307,22 @@ func (circle *Circle) Draw(time float64, color color2.Color, batch *batch.QuadBa
 
 	circle.hitCircle.SetColor(skin.GetColor(int(circle.ComboSet), int(circle.ComboSetHax), color))
 
-	circle.hitCircle.Draw(time, batch)
+	drawCircle := !circle.SliderPoint || circle.SliderPointStart || settings.Objects.Sliders.DrawEndCircles
+
+	if drawCircle {
+		circle.hitCircle.Draw(time, batch)
+	}
 
 	if settings.DIVIDES < settings.Objects.Colors.MandalaTexturesTrigger {
-		if !skin.GetInfo().HitCircleOverlayAboveNumber {
+		if !skin.GetInfo().HitCircleOverlayAboveNumber && drawCircle {
 			circle.hitCircleOverlay.Draw(time, batch)
 		}
 
 		if !circle.SliderPoint || circle.SliderPointStart {
-			if settings.DIVIDES < 2 && settings.Objects.DrawComboNumbers {
+			if settings.DIVIDES < 2 && settings.Objects.DrawComboNumbers && drawCircle {
 				circle.comboText.Draw(0, batch)
 			}
-		} else if !circle.SliderPointEnd {
+		} else if !circle.SliderPointEnd && settings.Objects.Sliders.DrawReverseArrows {
 			prevRotation := batch.GetRotation()
 			batch.SetRotation(circle.ArrowRotation)
 			//circle.reverseArrow.SetRotation(circle.ArrowRotation)
@@ -329,7 +334,7 @@ func (circle *Circle) Draw(time float64, color color2.Color, batch *batch.QuadBa
 		batch.SetTranslation(position.Copy64())
 		batch.SetColor(1, 1, 1, alpha)
 
-		if skin.GetInfo().HitCircleOverlayAboveNumber {
+		if skin.GetInfo().HitCircleOverlayAboveNumber && drawCircle {
 			circle.hitCircleOverlay.Draw(time, batch)
 		}
 	}

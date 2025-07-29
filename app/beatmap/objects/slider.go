@@ -1131,10 +1131,8 @@ func (slider *Slider) Draw(time float64, color color2.Color, batch *batch.QuadBa
 
 		batch.SetSubScale(1, 1)
 
-		if settings.Objects.Sliders.DrawEndCircles {
-			for i := len(slider.endCircles) - 1; i >= 0; i-- {
-				slider.endCircles[i].Draw(time, color, batch)
-			}
+		for i := len(slider.endCircles) - 1; i >= 0; i-- {
+			slider.endCircles[i].Draw(time, color, batch)
 		}
 	}
 
