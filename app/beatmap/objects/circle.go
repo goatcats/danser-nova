@@ -194,6 +194,10 @@ func (circle *Circle) SetDifficulty(diff *difficulty.Difficulty) {
 		}
 	}
 
+	if circle.SliderPointEnd {
+		return
+	}
+
 	if circle.SliderPoint && !circle.SliderPointStart {
 		circle.reverseArrow = sprite.NewSpriteSingle(skin.GetTexture("reversearrow"), 0, vector.NewVec2d(0, 0), vector.Centre)
 		circle.reverseArrow.SetAlpha(0)
