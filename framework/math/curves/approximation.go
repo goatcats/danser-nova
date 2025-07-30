@@ -1,8 +1,9 @@
 package curves
 
 import (
-	"github.com/wieku/danser-go/framework/math/vector"
 	"math"
+
+	"github.com/wieku/danser-go/framework/math/vector"
 )
 
 func ApproximateCircularArc(pt1, pt2, pt3 vector.Vector2f, detail float32) []vector.Vector2f {
@@ -31,7 +32,7 @@ func ApproximateCircularArcLazer(pt1, pt2, pt3 vector.Vector2f) []vector.Vector2
 	arc := NewCirArc(pt1, pt2, pt3)
 
 	if arc.Unstable {
-		return []vector.Vector2f{pt1, pt2, pt3}
+		return ApproximateBezier([]vector.Vector2f{pt1, pt2, pt3})
 	}
 
 	segments := 2
