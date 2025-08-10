@@ -2,10 +2,6 @@ package ffmpeg
 
 import (
 	"fmt"
-	"github.com/wieku/danser-go/app/settings"
-	"github.com/wieku/danser-go/framework/bass"
-	"github.com/wieku/danser-go/framework/files"
-	"github.com/wieku/danser-go/framework/goroutines"
 	"io"
 	"log"
 	"os"
@@ -14,6 +10,12 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/wieku/danser-go/app/settings"
+	"github.com/wieku/danser-go/framework/bass"
+	"github.com/wieku/danser-go/framework/files"
+	"github.com/wieku/danser-go/framework/goroutines"
+	"github.com/wieku/danser-go/framework/platform"
 )
 
 const MaxAudioBuffers = 2000
@@ -71,7 +73,10 @@ func startAudio(audioFPS float64) {
 
 	log.Println("Running ffmpeg with options:", options)
 
-	cmdAudio = exec.Command(ffmpegExec, options...)
+	cmdAudio, err = platform.PrepareFFMpeg("ffmpeg", options...)
+	if err != nil {
+		panic(err)
+	}
 
 	if runtime.GOOS == "windows" {
 		audioPipe, err = cmdAudio.StdinPipe()

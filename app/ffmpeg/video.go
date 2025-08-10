@@ -3,14 +3,6 @@ package ffmpeg
 import (
 	"bufio"
 	"fmt"
-	"github.com/go-gl/gl/v3.3-core/gl"
-	"github.com/wieku/danser-go/app/settings"
-	"github.com/wieku/danser-go/framework/files"
-	"github.com/wieku/danser-go/framework/frame"
-	"github.com/wieku/danser-go/framework/goroutines"
-	"github.com/wieku/danser-go/framework/graphics/effects"
-	"github.com/wieku/danser-go/framework/graphics/texture"
-	"github.com/wieku/danser-go/framework/util/pixconv"
 	"io"
 	"log"
 	"os"
@@ -21,6 +13,17 @@ import (
 	"strings"
 	"sync"
 	"unsafe"
+
+	"github.com/go-gl/gl/v3.3-core/gl"
+
+	"github.com/wieku/danser-go/app/settings"
+	"github.com/wieku/danser-go/framework/files"
+	"github.com/wieku/danser-go/framework/frame"
+	"github.com/wieku/danser-go/framework/goroutines"
+	"github.com/wieku/danser-go/framework/graphics/effects"
+	"github.com/wieku/danser-go/framework/graphics/texture"
+	"github.com/wieku/danser-go/framework/platform"
+	"github.com/wieku/danser-go/framework/util/pixconv"
 )
 
 const MaxVideoBuffers = 10
@@ -183,7 +186,10 @@ func startVideo(fps, _w, _h int) {
 
 	log.Println("Running ffmpeg with options:", options)
 
-	cmdVideo = exec.Command(ffmpegExec, options...)
+	cmdVideo, err = platform.PrepareFFMpeg("ffmpeg", options...)
+	if err != nil {
+		panic(err)
+	}
 
 	if runtime.GOOS == "windows" {
 		videoPipe, err = cmdVideo.StdinPipe()
