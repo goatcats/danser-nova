@@ -30,15 +30,20 @@ var audioWriteQueue chan []byte
 var endSyncAudio *sync.WaitGroup
 
 func startAudio(audioFPS float64) {
+	tempDir := filepath.Join(settings.Recording.GetOutputDir(), output+"_temp")
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		panic(err)
+	}
+
 	inputName := "-"
 
 	if runtime.GOOS != "windows" {
-		pipe, err := files.NewNamedPipe("")
+		pipe, err := files.NewNamedPipe(tempDir, "")
 		if err != nil {
 			panic(err)
 		}
 
-		inputName = pipe.Name()
+		inputName = pipe.Path()
 		audioPipe = pipe
 	}
 
@@ -69,7 +74,7 @@ func startAudio(audioFPS float64) {
 		options = append(options, encOptions...)
 	}
 
-	options = append(options, filepath.Join(settings.Recording.GetOutputDir(), output+"_temp", "audio."+settings.Recording.Container))
+	options = append(options, filepath.Join(tempDir, "audio."+settings.Recording.Container))
 
 	log.Println("Running ffmpeg with options:", options)
 
