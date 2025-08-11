@@ -123,15 +123,21 @@ func startVideo(fps, _w, _h int) {
 		filters = append(filters, videoFilters)
 	}
 
+	tempDir := filepath.Join(settings.Recording.GetOutputDir(), output+"_temp")
+
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		panic(err)
+	}
+
 	inputName := "-"
 
 	if runtime.GOOS != "windows" {
-		pipe, err := files.NewNamedPipe("")
+		pipe, err := files.NewNamedPipe(tempDir, "")
 		if err != nil {
 			panic(err)
 		}
 
-		inputName = pipe.Name()
+		inputName = pipe.Path()
 		videoPipe = pipe
 	}
 
@@ -182,7 +188,7 @@ func startVideo(fps, _w, _h int) {
 		options = append(options, encOptions...)
 	}
 
-	options = append(options, filepath.Join(settings.Recording.GetOutputDir(), output+"_temp", "video."+settings.Recording.Container))
+	options = append(options, filepath.Join(tempDir, "video."+settings.Recording.Container))
 
 	log.Println("Running ffmpeg with options:", options)
 
