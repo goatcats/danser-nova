@@ -26,12 +26,15 @@ type OptionalProps struct {
 	Fullscreen     bool
 }
 
-var sdlWindow *sdl.Window
-var sdlShouldClose bool
-var offscreenCtx bool
-var hovered bool
-var keyMap = make(map[sdl.Keycode]bool)
-var kMutex sync.RWMutex
+var (
+	sdlWindow      *sdl.Window
+	sdlShouldClose bool
+	offscreenCtx   bool
+	hovered        bool
+	keyMap         = make(map[sdl.Keycode]bool)
+	kMutex         sync.RWMutex
+	fullscreen     bool
+)
 
 func Initialize(offscreen bool) error {
 	libPath := filepath.Join(env.LibDir(), "SDL3.dll")
@@ -117,6 +120,8 @@ func SDLCreateWindow(width, height int, title string, props OptionalProps) {
 		if err = sdlWindow.SetFullscreen(true); err != nil {
 			panic(err)
 		}
+
+		fullscreen = true
 	}
 
 	if !props.Hidden {
@@ -148,18 +153,6 @@ func GetFramebufferSize() (int, int) {
 	}
 
 	return int(w), int(h)
-}
-
-func SetSwapInterval(interval int) {
-	if err := sdl.GL_SetSwapInterval(int32(interval)); err != nil {
-		panic(err)
-	}
-}
-
-func SwapBuffers() {
-	if err := sdl.GL_SwapWindow(sdlWindow); err != nil {
-		panic(err)
-	}
 }
 
 func IsHovered() bool {
