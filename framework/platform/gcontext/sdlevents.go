@@ -116,9 +116,11 @@ func HandleEvents() {
 
 			fileList = append(fileList, dEvent.Data)
 		case sdl.EVENT_DROP_COMPLETE:
-			callListeners(DropEvent{
-				Names: fileList,
-			})
+			if len(fileList) > 0 {
+				callListeners(DropEvent{
+					Names: fileList,
+				})
+			}
 
 			fileList = fileList[:0]
 		case sdl.EVENT_WINDOW_MOUSE_ENTER:
