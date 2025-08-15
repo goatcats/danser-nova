@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"sort"
 	"strconv"
@@ -1695,6 +1696,12 @@ func (l *launcher) startDanser() {
 
 	if build.Stream == "Release" {
 		dExec = filepath.Join(env.LibDir(), build.DanserExec)
+	}
+
+	if runtime.GOOS != "windows" {
+		if stat, err := os.Stat(dExec); err == nil {
+			os.Chmod(dExec, (stat.Mode()&os.ModePerm)|0111) // Just try
+		}
 	}
 
 	l.danserCmd = exec.Command(dExec, l.bld.getArguments()...)

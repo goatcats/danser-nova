@@ -3,8 +3,10 @@ package platform
 import (
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 
 	"github.com/wieku/danser-go/framework/files"
 )
@@ -29,7 +31,15 @@ func PrepareFFMpeg(cmdName string, args ...string) (*exec.Cmd, error) {
 		return nil, fmt.Errorf(errMsg)
 	}
 
-	cmd := exec.Command(filepath.Join(ffPath, cmdName), args...)
+	execPath := filepath.Join(ffPath, cmdName)
+
+	if runtime.GOOS != "windows" {
+		if stat, err := os.Stat(execPath); err == nil {
+			os.Chmod(execPath, (stat.Mode()&os.ModePerm)|0111) // Just try
+		}
+	}
+
+	cmd := exec.Command(execPath, args...)
 	cmd.Dir = ffPath
 
 	return cmd, nil
