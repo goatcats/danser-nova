@@ -303,9 +303,12 @@ func SetProgress(value float32) {
 	}
 }
 
-var iconSizes = []int{32, 128, 64, 48, 24, 16}
-
 func loadIconsSDL(name string) {
+	var iconSizes = []int{128, 64, 48, 32, 24, 16}
+	if runtime.GOOS == "windows" { // windows looks broken with higher res icons, so 32px one is the first
+		iconSizes = []int{32, 128, 64, 48, 24, 16}
+	}
+
 	var mainIcon *sdl.Surface
 
 	var toDispose []*texture.Pixmap
