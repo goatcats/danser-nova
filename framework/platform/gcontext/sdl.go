@@ -46,11 +46,13 @@ func Initialize(offscreen bool) error {
 		return fmt.Errorf("sdl: couldn't load library: %w", err)
 	}
 
+	_ = sdl.SetHint(sdl.HINT_MOUSE_FOCUS_CLICKTHROUGH, "1")
+
 	if err := sdl.SetHint("SDL_WINDOWS_DPI_AWARENESS", "derptest"); err != nil {
 		return fmt.Errorf(`sdl: couldn't set hint "SDL_WINDOWS_DPI_AWARENESS": %w`, err)
 	} // we set garbage value here so we can set proper one just before creating the window
 
-	if offscreen && runtime.GOOS == "linux" {
+	if offscreen && runtime.GOOS != "windows" {
 		if err := sdl.SetHint(sdl.HINT_VIDEO_DRIVER, "offscreen"); err != nil {
 			return fmt.Errorf(`sdl: couldn't set hint "%s": %w`, sdl.HINT_VIDEO_DRIVER, err)
 		}
