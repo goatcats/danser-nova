@@ -268,7 +268,7 @@ func (circle *Circle) Arm(clicked bool, time float64) {
 		endScale = 1.8
 	}
 
-	if clicked && !circle.diff.CheckModActive(difficulty.Hidden) {
+	if clicked && !circle.diff.CheckModActive(difficulty.Hidden) && !circle.diff.CheckModActive(difficulty.Traceable) {
 		endTime := startTime + difficulty.HitFadeOut
 		circle.hitCircle.AddTransform(animation.NewSingleTransform(animation.Scale, easing.OutQuad, startTime, endTime, 1.0, endScale))
 		circle.hitCircleOverlay.AddTransform(animation.NewSingleTransform(animation.Scale, easing.OutQuad, startTime, endTime, 1.0, endScale))
