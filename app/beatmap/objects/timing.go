@@ -99,16 +99,17 @@ func NewTimings() *Timings {
 
 func (tim *Timings) AddPoint(time, beatLength float64, sampleSet, sampleIndex int, sampleVolume float64, signature int, inherited, kiai, omitFirstBarLine bool) {
 	point := TimingPoint{
-		Time:             time,
-		beatLengthBase:   beatLength,
-		beatLength:       beatLength,
-		SampleSet:        sampleSet,
-		SampleIndex:      sampleIndex,
-		SampleVolume:     sampleVolume,
-		Signature:        signature,
-		Inherited:        inherited,
-		Kiai:             kiai,
-		OmitFirstBarLine: omitFirstBarLine,
+		Time:                time,
+		beatLengthBase:      beatLength,
+		beatLengthBaseLazer: beatLength,
+		beatLength:          beatLength,
+		SampleSet:           sampleSet,
+		SampleIndex:         sampleIndex,
+		SampleVolume:        sampleVolume,
+		Signature:           signature,
+		Inherited:           inherited,
+		Kiai:                kiai,
+		OmitFirstBarLine:    omitFirstBarLine,
 	}
 
 	tim.points = append(tim.points, point)
