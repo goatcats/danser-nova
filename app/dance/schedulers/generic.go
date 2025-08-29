@@ -1,6 +1,8 @@
 package schedulers
 
 import (
+	"math/rand"
+
 	"github.com/wieku/danser-go/app/beatmap/difficulty"
 	"github.com/wieku/danser-go/app/beatmap/objects"
 	"github.com/wieku/danser-go/app/dance/input"
@@ -10,7 +12,6 @@ import (
 	"github.com/wieku/danser-go/app/graphics"
 	"github.com/wieku/danser-go/app/settings"
 	"github.com/wieku/danser-go/framework/math/vector"
-	"math/rand"
 )
 
 type GenericScheduler struct {
@@ -49,7 +50,7 @@ func (scheduler *GenericScheduler) Init(objs []objects.IHitObject, diff *difficu
 	// Convert spinners to pseudo spinners that have beginning and ending angles, simplifies mover codes as well
 	for i := 0; i < len(scheduler.queue); i++ {
 		if s, ok := scheduler.queue[i].(*objects.Spinner); ok {
-			scheduler.queue[i] = spinners.NewSpinner(s, spinnerMoverCtor, scheduler.index)
+			scheduler.queue[i] = spinners.NewSpinner(s, diff, spinnerMoverCtor, scheduler.index)
 		}
 	}
 
