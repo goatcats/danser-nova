@@ -1,17 +1,17 @@
-package pp25xxxx
+package pp251020
 
 import (
 	"math"
 
 	"github.com/wieku/danser-go/app/beatmap/difficulty"
 	"github.com/wieku/danser-go/app/rulesets/osu/performance/api"
-	"github.com/wieku/danser-go/app/rulesets/osu/performance/pp25xxxx/skills"
+	"github.com/wieku/danser-go/app/rulesets/osu/performance/pp251020/skills"
 	"github.com/wieku/danser-go/app/rulesets/osu/performance/putils"
 	"github.com/wieku/danser-go/framework/math/mutils"
 )
 
 const (
-	PerformanceBaseMultiplier float64 = 1.15
+	PerformanceBaseMultiplier float64 = 1.14
 )
 
 /* ------------------------------------------------------------- */
@@ -25,12 +25,11 @@ type PPv2 struct {
 
 	diff *difficulty.Difficulty
 
-	effectiveMissCount           float64
-	totalHits                    int
-	totalSuccessfulHits          int
-	totalImperfectHits           int
-	countSliderEndsDropped       int
-	amountHitObjectsWithAccuracy int
+	effectiveMissCount     float64
+	totalHits              int
+	totalSuccessfulHits    int
+	totalImperfectHits     int
+	countSliderEndsDropped int
 
 	usingClassicSliderAccuracy bool
 
@@ -38,7 +37,9 @@ type PPv2 struct {
 	okHitWindow    float64
 	mehHitWindow   float64
 
-	speedDeviation *float64
+	speedDeviation             *float64
+	speedEstimatedSliderBreaks float64
+	aimEstimatedSliderBreaks   float64
 }
 
 func NewPPCalculator() api.IPerformanceCalculator {
@@ -84,35 +85,14 @@ func (pp *PPv2) Calculate(attribs api.Attributes, score api.PerfScore, diff *dif
 
 	if pp.attribs.Sliders > 0 {
 		if pp.usingClassicSliderAccuracy {
-			// Consider that full combo is maximum combo minus dropped slider tails since they don't contribute to combo but also don't break it
-			// In classic scores we can't know the amount of dropped sliders so we estimate to 10% of all sliders on the map
-			fullComboThreshold := float64(pp.attribs.MaxCombo) - 0.1*float64(pp.attribs.Sliders)
-
-			if float64(pp.score.MaxCombo) < fullComboThreshold {
-				pp.effectiveMissCount = fullComboThreshold / max(1.0, float64(pp.score.MaxCombo))
-			}
-
-			pp.effectiveMissCount = min(pp.effectiveMissCount, float64(pp.totalImperfectHits))
+			pp.effectiveMissCount = CalculateMissCount(score, attribs, diff)
 		} else {
-			fullComboThreshold := float64(pp.attribs.MaxCombo - pp.countSliderEndsDropped)
-
-			if float64(pp.score.MaxCombo) < fullComboThreshold {
-				pp.effectiveMissCount = fullComboThreshold / max(1.0, float64(pp.score.MaxCombo))
-			}
-
-			// Combine regular misses with tick misses since tick misses break combo as well
-			pp.effectiveMissCount = min(pp.effectiveMissCount, float64(pp.score.SliderBreaks+pp.score.CountMiss))
+			pp.effectiveMissCount = pp.calculateComboBasedEstimatedMissCount(pp.attribs)
 		}
-
 	}
 
 	pp.effectiveMissCount = max(float64(pp.score.CountMiss), pp.effectiveMissCount)
 	pp.effectiveMissCount = min(float64(pp.totalHits), pp.effectiveMissCount)
-
-	pp.amountHitObjectsWithAccuracy = attribs.Circles
-	if !pp.usingClassicSliderAccuracy {
-		pp.amountHitObjectsWithAccuracy += attribs.Sliders
-	}
 
 	// total pp
 
@@ -127,12 +107,12 @@ func (pp *PPv2) Calculate(attribs api.Attributes, score api.PerfScore, diff *dif
 	}
 
 	if diff.Mods.Active(difficulty.Relax) {
-		okMultiplier := 1.0
+		okMultiplier := 0.75
 		mehMultiplier := 1.0
 
 		if diff.ODReal > 0.0 {
-			okMultiplier = max(0.0, 1-math.Pow(diff.ODReal/13.33, 1.8))
-			mehMultiplier = max(0.0, 1-math.Pow(diff.ODReal/13.33, 5))
+			okMultiplier *= max(0.0, 1-math.Pow(diff.ODReal/13.33, 1.8))
+			mehMultiplier *= max(0.0, 1-math.Pow(diff.ODReal/13.33, 5))
 		}
 
 		pp.effectiveMissCount = min(pp.effectiveMissCount+float64(pp.score.CountOk)*okMultiplier+float64(pp.score.CountMeh)*mehMultiplier, float64(pp.totalHits))
@@ -195,36 +175,24 @@ func (pp *PPv2) computeAimValue() float64 {
 
 	// Penalize misses by assessing # of misses relative to the total # of objects. Default a 3% reduction for any # of misses.
 	if pp.effectiveMissCount > 0 {
-		aimValue *= pp.calculateMissPenalty(pp.effectiveMissCount, pp.attribs.AimDifficultStrainCount)
+		pp.aimEstimatedSliderBreaks = pp.calculateEstimatedSliderBreaks(pp.attribs.AimTopWeightedSliderFactor, pp.attribs)
+
+		relevantMissCount := min(pp.effectiveMissCount+pp.aimEstimatedSliderBreaks, float64(pp.totalImperfectHits+pp.score.SliderBreaks))
+
+		aimValue *= pp.calculateMissPenalty(relevantMissCount, pp.attribs.AimDifficultStrainCount)
 	}
 
-	approachRateFactor := 0.0
-	if pp.diff.ARReal > 10.33 {
-		approachRateFactor = 0.3 * (pp.diff.ARReal - 10.33)
-	} else if pp.diff.ARReal < 8.0 {
-		approachRateFactor = 0.05 * (8.0 - pp.diff.ARReal)
-	}
-
-	if pp.diff.CheckModActive(difficulty.Relax) {
-		approachRateFactor = 0.0
-	}
-
-	aimValue *= 1.0 + approachRateFactor*lengthBonus // Buff for longer maps with high AR.
-
-	// We want to give more reward for lower AR when it comes to aim and HD. This nerfs high AR and buffs lower AR.
-	if pp.diff.Mods.Active(difficulty.Hidden) || pp.diff.Mods.Active(difficulty.Traceable) {
-		aimValue *= 1.0 + 0.04*(12.0-pp.diff.ARReal)
+	if pp.diff.CheckModActive(difficulty.Traceable) {
+		aimValue *= 1.0 + calculateVisibilityBonusSF(pp.diff, pp.diff.ARReal, pp.attribs.SliderFactor)
 	}
 
 	aimValue *= pp.score.Accuracy
-	// It is important to also consider accuracy difficulty when doing that
-	aimValue *= 0.98 + math.Pow(max(0, pp.diff.ODReal), 2)/2500
 
 	return aimValue
 }
 
 func (pp *PPv2) computeSpeedValue() float64 {
-	if pp.diff.CheckModActive(difficulty.Relax) {
+	if pp.diff.CheckModActive(difficulty.Relax) || pp.speedDeviation == nil {
 		return 0
 	}
 
@@ -240,22 +208,15 @@ func (pp *PPv2) computeSpeedValue() float64 {
 
 	// Penalize misses by assessing # of misses relative to the total # of objects. Default a 3% reduction for any # of misses.
 	if pp.effectiveMissCount > 0 {
-		speedValue *= pp.calculateMissPenalty(pp.effectiveMissCount, pp.attribs.SpeedDifficultStrainCount)
+		pp.speedEstimatedSliderBreaks = pp.calculateEstimatedSliderBreaks(pp.attribs.SpeedTopWeightedSliderFactor, pp.attribs)
+
+		relevantMissCount := min(pp.effectiveMissCount+pp.speedEstimatedSliderBreaks, float64(pp.totalImperfectHits+pp.score.SliderBreaks))
+
+		speedValue *= pp.calculateMissPenalty(relevantMissCount, pp.attribs.SpeedDifficultStrainCount)
 	}
 
-	approachRateFactor := 0.0
-	if pp.diff.ARReal > 10.33 {
-		approachRateFactor = 0.3 * (pp.diff.ARReal - 10.33)
-	}
-
-	if pp.diff.CheckModActive(difficulty.Relax2) {
-		approachRateFactor = 0
-	}
-
-	speedValue *= 1.0 + approachRateFactor*lengthBonus
-
-	if pp.diff.Mods.Active(difficulty.Hidden) || pp.diff.Mods.Active(difficulty.Traceable) {
-		speedValue *= 1.0 + 0.04*(12.0-pp.diff.ARReal)
+	if pp.diff.Mods.Active(difficulty.Traceable) {
+		speedValue *= 1.0 + calculateVisibilityBonus(pp.diff, pp.diff.ARReal)
 	}
 
 	speedHighDeviationMultiplier := pp.calculateSpeedHighDeviationNerf(pp.attribs)
@@ -271,7 +232,7 @@ func (pp *PPv2) computeSpeedValue() float64 {
 	}
 
 	// Scale the speed value with accuracy and OD
-	speedValue *= (0.95 + math.Pow(pp.diff.ODReal, 2)/750) * math.Pow((pp.score.Accuracy+relevantAccuracy)/2.0, (14.5-pp.diff.ODReal)/2)
+	speedValue *= math.Pow((pp.score.Accuracy+relevantAccuracy)/2.0, (14.5-pp.diff.ODReal)/2)
 
 	return speedValue
 }
@@ -281,11 +242,16 @@ func (pp *PPv2) computeAccuracyValue() float64 {
 		return 0.0
 	}
 
+	amountHitObjectsWithAccuracy := pp.attribs.Circles
+	if !pp.usingClassicSliderAccuracy || pp.diff.CheckModActive(difficulty.ScoreV2) {
+		amountHitObjectsWithAccuracy += pp.attribs.Sliders
+	}
+
 	// This percentage only considers HitCircles of any value - in this part of the calculation we focus on hitting the timing hit window
 	betterAccuracyPercentage := 0.0
 
-	if pp.amountHitObjectsWithAccuracy > 0 {
-		betterAccuracyPercentage = float64((pp.score.CountGreat-max(pp.totalHits-pp.amountHitObjectsWithAccuracy, 0))*6+pp.score.CountOk*2+pp.score.CountMeh) / (float64(pp.amountHitObjectsWithAccuracy) * 6)
+	if amountHitObjectsWithAccuracy > 0 {
+		betterAccuracyPercentage = float64((pp.score.CountGreat-max(pp.totalHits-amountHitObjectsWithAccuracy, 0))*6+pp.score.CountOk*2+pp.score.CountMeh) / (float64(amountHitObjectsWithAccuracy) * 6)
 	}
 
 	// It is possible to reach a negative accuracy with this formula. Cap it at zero - zero points
@@ -298,10 +264,10 @@ func (pp *PPv2) computeAccuracyValue() float64 {
 	accuracyValue := math.Pow(1.52163, pp.diff.ODReal) * math.Pow(betterAccuracyPercentage, 24) * 2.83
 
 	// Bonus for many hitcircles - it's harder to keep good accuracy up for longer
-	accuracyValue *= min(1.15, math.Pow(float64(pp.amountHitObjectsWithAccuracy)/1000.0, 0.3))
+	accuracyValue *= min(1.15, math.Pow(float64(amountHitObjectsWithAccuracy)/1000.0, 0.3))
 
 	if pp.diff.Mods.Active(difficulty.Hidden) || pp.diff.Mods.Active(difficulty.Traceable) {
-		accuracyValue *= 1.08
+		accuracyValue *= 1 + 0.08*putils.ReverseLerp(pp.diff.ARReal, 11.5, 10)
 	}
 
 	if pp.diff.Mods.Active(difficulty.Flashlight) {
@@ -323,23 +289,72 @@ func (pp *PPv2) computeFlashlightValue() float64 {
 		flashlightValue *= 0.97 * math.Pow(1-math.Pow(pp.effectiveMissCount/float64(pp.totalHits), 0.775), math.Pow(pp.effectiveMissCount, 0.875))
 	}
 
-	// Combo scaling.
 	flashlightValue *= pp.getComboScalingFactor()
-
-	// Account for shorter maps having a higher ratio of 0 combo/100 combo flashlight radius.
-	scale := 0.7 + 0.1*min(1.0, float64(pp.totalHits)/200.0)
-	if pp.totalHits > 200 {
-		scale += 0.2 * min(1.0, float64(pp.totalHits-200)/200.0)
-	}
-
-	flashlightValue *= scale
 
 	// Scale the flashlight value with accuracy _slightly_.
 	flashlightValue *= 0.5 + pp.score.Accuracy/2.0
-	// It is important to also consider accuracy difficulty when doing that.
-	flashlightValue *= 0.98 + math.Pow(max(0, pp.diff.ODReal), 2)/2500
 
 	return flashlightValue
+}
+
+func (pp *PPv2) calculateComboBasedEstimatedMissCount(attributes api.Attributes) float64 {
+	if attributes.Sliders <= 0 {
+		return float64(pp.score.CountMiss)
+	}
+
+	missCount := float64(pp.score.CountMiss)
+
+	if pp.usingClassicSliderAccuracy {
+		// Consider that full combo is maximum combo minus dropped slider tails since they don't contribute to combo but also don't break it
+		// In classic scores we can't know the amount of dropped sliders so we estimate to 10% of all sliders on the map
+		fullComboThreshold := float64(attributes.MaxCombo) - 0.1*float64(attributes.Sliders)
+
+		if float64(pp.score.MaxCombo) < fullComboThreshold {
+			missCount = fullComboThreshold / max(1.0, float64(pp.score.MaxCombo))
+		}
+		// In classic scores there can't be more misses than a sum of all non-perfect judgements
+		missCount = min(missCount, float64(pp.totalImperfectHits))
+
+		// Every slider has *at least* 2 combo attributed in classic mechanics.
+		// If they broke on a slider with a tick, then this still works since they would have lost at least 2 combo (the tick and the end)
+		// Using this as a max means a score that loses 1 combo on a map can't possibly have been a slider break.
+		// It must have been a slider end.
+		maxPossibleSliderBreaks := min(attributes.Sliders, (attributes.MaxCombo-pp.score.MaxCombo)/2)
+
+		sliderBreaks := missCount - float64(pp.score.CountMiss)
+
+		if sliderBreaks > float64(maxPossibleSliderBreaks) {
+			missCount = float64(pp.score.CountMiss + maxPossibleSliderBreaks)
+		}
+	} else {
+		fullComboThreshold := float64(attributes.MaxCombo - pp.countSliderEndsDropped)
+
+		if float64(pp.score.MaxCombo) < fullComboThreshold {
+			missCount = fullComboThreshold / max(1.0, float64(pp.score.MaxCombo))
+		}
+
+		// Combine regular misses with tick misses since tick misses break combo as well
+		missCount = min(missCount, float64(pp.score.SliderBreaks+pp.score.CountMiss))
+	}
+
+	return missCount
+}
+
+func (pp *PPv2) calculateEstimatedSliderBreaks(topWeightedSliderFactor float64, attributes api.Attributes) float64 {
+	if !pp.usingClassicSliderAccuracy || pp.score.CountOk == 0 {
+		return 0
+	}
+
+	missedComboPercent := 1.0 - float64(pp.score.MaxCombo)/float64(attributes.MaxCombo)
+	estimatedSliderBreaks := min(float64(pp.score.CountOk), pp.effectiveMissCount*topWeightedSliderFactor)
+
+	// Scores with more Oks are more likely to have slider breaks.
+	okAdjustment := ((float64(pp.score.CountOk) - estimatedSliderBreaks) + 0.5) / float64(pp.score.CountOk)
+
+	// There is a low probability of extra slider breaks on effective miss counts close to 1, as score based calculations are good at indicating if only a single break occurred.
+	estimatedSliderBreaks *= putils.Smoothstep(pp.effectiveMissCount, 1, 2)
+
+	return estimatedSliderBreaks * okAdjustment * putils.Logistic(missedComboPercent, 0.33, 15, 1)
 }
 
 // Estimates player's deviation on speed notes using <see cref="calculateDeviation"/>, assuming worst-case.
@@ -359,53 +374,47 @@ func (pp *PPv2) calculateSpeedDeviation(attributes api.Attributes) *float64 {
 	relevantCountOk := min(float64(pp.score.CountOk), speedNoteCount-relevantCountMiss-relevantCountMeh)
 	relevantCountGreat := max(0, speedNoteCount-relevantCountMiss-relevantCountMeh-relevantCountOk)
 
-	return pp.calculateDeviation(attributes, relevantCountGreat, relevantCountOk, relevantCountMeh, relevantCountMiss)
+	return pp.calculateDeviation(relevantCountGreat, relevantCountOk, relevantCountMeh)
 }
 
 // Estimates the player's tap deviation based on the OD, given number of greats, oks, mehs and misses,
 // assuming the player's mean hit error is 0. The estimation is consistent in that two SS scores on the same map with the same settings
 // will always return the same deviation. Misses are ignored because they are usually due to misaiming.
 // Greats and oks are assumed to follow a normal distribution, whereas mehs are assumed to follow a uniform distribution.
-func (pp *PPv2) calculateDeviation(attributes api.Attributes, relevantCountGreat, relevantCountOk, relevantCountMeh, relevantCountMiss float64) *float64 {
+func (pp *PPv2) calculateDeviation(relevantCountGreat, relevantCountOk, relevantCountMeh float64) *float64 {
 	if relevantCountGreat+relevantCountOk+relevantCountMeh <= 0 {
 		return nil
 	}
 
-	objectCount := relevantCountGreat + relevantCountOk + relevantCountMeh + relevantCountMiss
-
-	// The probability that a player hits a circle is unknown, but we can estimate it to be
-	// the number of greats on circles divided by the number of circles, and then add one
-	// to the number of circles as a bias correction.
-	n := max(1, objectCount-relevantCountMiss-relevantCountMeh)
+	// The sample proportion of successful hits.
+	n := max(1, relevantCountGreat+relevantCountOk)
+	p := relevantCountGreat / n
 
 	const z = 2.32634787404 // 99% critical value for the normal distribution (one-tailed).
 
-	// Proportion of greats hit on circles, ignoring misses and 50s.
-	p := relevantCountGreat / n
-
 	// We can be 99% confident that p is at least this value.
-	pLowerBound := (n*p+z*z/2)/(n+z*z) - z/(n+z*z)*math.Sqrt(n*p*(1-p)+z*z/4)
+	pLowerBound := min(p, (n*p+z*z/2)/(n+z*z)-z/(n+z*z)*math.Sqrt(n*p*(1-p)+z*z/4))
 
-	// Compute the deviation assuming greats and oks are normally distributed, and mehs are uniformly distributed.
-	// Begin with greats and oks first. Ignoring mehs, we can be 99% confident that the deviation is not higher than:
-	deviation := pp.greatHitWindow / (math.Sqrt(2) * math.Erfinv(pLowerBound))
+	var deviation float64
 
-	randomValue := math.Sqrt(2/math.Pi) * pp.okHitWindow * math.Exp(-0.5*math.Pow(pp.okHitWindow/deviation, 2)) / (deviation * math.Erf(pp.okHitWindow/(math.Sqrt(2)*deviation)))
+	if pLowerBound > 0.01 {
+		// Compute deviation assuming greats and oks are normally distributed.
+		deviation = pp.greatHitWindow / (math.Sqrt(2) * math.Erfinv(pLowerBound))
 
-	deviation *= math.Sqrt(1 - randomValue)
+		// Subtract the deviation provided by tails that land outside the ok hit window from the deviation computed above.
+		// This is equivalent to calculating the deviation of a normal distribution truncated at +-okHitWindow.
+		okHitWindowTailAmount := math.Sqrt(2/math.Pi) * pp.okHitWindow * math.Exp(-0.5*math.Pow(pp.okHitWindow/deviation, 2)) /
+			(deviation * math.Erf(pp.okHitWindow/(math.Sqrt(2)*deviation)))
 
-	// Value deviation approach as greatCount approaches 0
-	limitValue := pp.okHitWindow / math.Sqrt(3)
-
-	// If precision is not enough to compute true deviation - use limit value
-	if pLowerBound == 0 || randomValue >= 1 || deviation > limitValue {
-		deviation = limitValue
+		deviation *= math.Sqrt(1 - okHitWindowTailAmount)
+	} else {
+		// A tested limit value for the case of a score only containing oks.
+		deviation = pp.okHitWindow / math.Sqrt(3)
 	}
 
-	// Then compute the variance for mehs.
+	// Compute and add the variance for mehs, assuming that they are uniformly distributed.
 	mehVariance := (pp.mehHitWindow*pp.mehHitWindow + pp.okHitWindow*pp.mehHitWindow + pp.okHitWindow*pp.okHitWindow) / 3
 
-	// Find the total deviation.
 	deviation = math.Sqrt(((relevantCountGreat+relevantCountOk)*math.Pow(deviation, 2) + relevantCountMeh*mehVariance) / (relevantCountGreat + relevantCountOk + relevantCountMeh))
 
 	return &deviation

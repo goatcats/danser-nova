@@ -177,7 +177,7 @@ func NewOsuRuleset(beatMap *beatmap.BeatMap, cursors []*graphics.Cursor, diffs [
 		if ruleset.oppDiffs[player.maskedModString] == nil {
 			player.diff.DiffCalcMode = true // To use lazer's stack offset for stable plays without having to put LZ mod
 
-			ruleset.oppDiffs[player.maskedModString] = performance.GetDifficultyCalculator().CalculateStep(ruleset.beatMap.HitObjects, player.diff)
+			ruleset.oppDiffs[player.maskedModString] = performance.GetDifficultyCalculator().CalculateStep(ruleset.beatMap, player.diff)
 
 			player.diff.DiffCalcMode = false
 

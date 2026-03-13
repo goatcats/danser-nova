@@ -1,18 +1,19 @@
 package evaluators
 
 import (
-	"github.com/wieku/danser-go/app/rulesets/osu/performance/pp25xxxx/preprocessing"
-	"github.com/wieku/danser-go/app/rulesets/osu/performance/putils"
-	"github.com/wieku/danser-go/framework/math/mutils"
 	"math"
 	"slices"
+
+	"github.com/wieku/danser-go/app/rulesets/osu/performance/pp251020/preprocessing"
+	"github.com/wieku/danser-go/app/rulesets/osu/performance/putils"
+	"github.com/wieku/danser-go/framework/math/mutils"
 )
 
 const (
 	rhythmHistoryTimeMax    = 5000.0
 	rhythmHistoryObjectsMax = 32
-	rhythmMultiplier        = 0.95
-	rhythmRatioMultiplier   = 12.0
+	rhythmMultiplier        = 1.0
+	rhythmRatioMultiplier   = 15.0
 	rhythmMinDeltaTime      = 25
 )
 
@@ -56,22 +57,25 @@ func EvaluateRhythm(current *preprocessing.DifficultyObject) float64 {
 
 		currHistoricalDecay := min(noteDecay, timeDecay) // either we're limited by time or limited by object count.
 
-		currDelta := currObj.StrainTime
-		prevDelta := prevObj.StrainTime
-		lastDelta := lastObj.StrainTime
+		currDelta := max(currObj.DeltaTime, 1e-7)
+		prevDelta := max(prevObj.DeltaTime, 1e-7)
+		lastDelta := max(lastObj.DeltaTime, 1e-7)
 
 		// calculate how much current delta difference deserves a rhythm bonus
 		// this function is meant to reduce rhythm bonus for deltas that are multiples of each other (i.e 100 and 200)
-		deltaDifferenceRatio := min(prevDelta, currDelta) / max(prevDelta, currDelta)
-		currRatio := 1.0 + rhythmRatioMultiplier*min(0.5, math.Pow(math.Sin(math.Pi/deltaDifferenceRatio), 2))
+		deltaDifference := max(prevDelta, currDelta) / min(prevDelta, currDelta)
+
+		// Take only the fractional part of the value since we're only interested in punishing multiples
+		deltaDifferenceFraction := deltaDifference - math.Trunc(deltaDifference)
+
+		currRatio := 1.0 + rhythmRatioMultiplier*min(0.5, putils.SmoothstepBellCurve(deltaDifferenceFraction, 0.5, 0.5))
 
 		// reduce ratio bonus if delta difference is too big
-		fraction := max(prevDelta/currDelta, currDelta/prevDelta)
-		fractionMultiplier := mutils.Clamp(2.0-fraction/8.0, 0.0, 1.0)
+		differenceMultiplier := mutils.Clamp(2.0-deltaDifference/8.0, 0.0, 1.0)
 
 		windowPenalty := min(1, max(0, math.Abs(prevDelta-currDelta)-deltaDifferenceEpsilon)/deltaDifferenceEpsilon)
 
-		effectiveRatio := windowPenalty * currRatio * fractionMultiplier
+		effectiveRatio := windowPenalty * currRatio * differenceMultiplier
 
 		if firstDeltaSwitch {
 			if math.Abs(prevDelta-currDelta) < deltaDifferenceEpsilon {
@@ -161,7 +165,10 @@ func EvaluateRhythm(current *preprocessing.DifficultyObject) float64 {
 		prevObj = currObj
 	}
 
-	return math.Sqrt(4+rhythmComplexitySum*rhythmMultiplier) / 2 //produces multiplier that can be applied to strain. range [1, infinity) (not really though)
+	rhythmDifficulty := math.Sqrt(4+rhythmComplexitySum*rhythmMultiplier) / 2 //produces multiplier that can be applied to strain. range [1, infinity) (not really though)
+	rhythmDifficulty *= 1 - current.GetDoubletapness(current.Next(0))
+
+	return rhythmDifficulty
 }
 
 type pair struct {

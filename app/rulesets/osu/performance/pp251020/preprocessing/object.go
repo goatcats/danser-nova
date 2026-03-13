@@ -1,11 +1,12 @@
 package preprocessing
 
 import (
+	"math"
+
 	"github.com/wieku/danser-go/app/beatmap/difficulty"
 	"github.com/wieku/danser-go/app/beatmap/objects"
 	"github.com/wieku/danser-go/framework/math/mutils"
 	"github.com/wieku/danser-go/framework/math/vector"
-	"math"
 )
 
 const (
@@ -26,7 +27,7 @@ type DifficultyObject struct {
 	IsSlider  bool
 	IsSpinner bool
 
-	lastObject objects.IHitObject
+	LastObject objects.IHitObject
 
 	lastLastObject objects.IHitObject
 
@@ -48,24 +49,27 @@ type DifficultyObject struct {
 
 	TravelTime float64
 
-	StrainTime float64
+	AdjustedDeltaTime float64
 
 	GreatWindow float64
+
+	SmallCircleBonus float64
 }
 
 func NewDifficultyObject(hitObject, lastLastObject, lastObject objects.IHitObject, d *difficulty.Difficulty, listOfDiffs *[]*DifficultyObject, index int) *DifficultyObject {
 	obj := &DifficultyObject{
-		listOfDiffs:    listOfDiffs,
-		Index:          index,
-		Diff:           d,
-		BaseObject:     hitObject,
-		lastObject:     lastObject,
-		lastLastObject: lastLastObject,
-		DeltaTime:      (hitObject.GetStartTime() - lastObject.GetStartTime()) / d.Speed,
-		StartTime:      hitObject.GetStartTime() / d.Speed,
-		EndTime:        hitObject.GetEndTime() / d.Speed,
-		Angle:          math.NaN(),
-		GreatWindow:    2 * d.Hit300U / d.Speed,
+		listOfDiffs:      listOfDiffs,
+		Index:            index,
+		Diff:             d,
+		BaseObject:       hitObject,
+		LastObject:       lastObject,
+		lastLastObject:   lastLastObject,
+		DeltaTime:        (hitObject.GetStartTime() - lastObject.GetStartTime()) / d.Speed,
+		StartTime:        hitObject.GetStartTime() / d.Speed,
+		EndTime:          hitObject.GetEndTime() / d.Speed,
+		Angle:            math.NaN(),
+		GreatWindow:      2 * d.Hit300U / d.Speed,
+		SmallCircleBonus: max(1.0, 1.0+(30-d.CircleRadiusL)/40),
 	}
 
 	if _, ok := hitObject.(*objects.Spinner); ok {
@@ -76,7 +80,7 @@ func NewDifficultyObject(hitObject, lastLastObject, lastObject objects.IHitObjec
 		obj.IsSlider = true
 	}
 
-	obj.StrainTime = max(obj.DeltaTime, MinDeltaTime)
+	obj.AdjustedDeltaTime = max(obj.DeltaTime, MinDeltaTime)
 
 	obj.setDistances()
 
@@ -140,12 +144,12 @@ func (o *DifficultyObject) Next(forwardsIndex int) *DifficultyObject {
 func (o *DifficultyObject) setDistances() {
 	if currentSlider, ok := o.BaseObject.(*LazySlider); ok {
 		// danser's RepeatCount considers first span, that's why we have to subtract 1 here
-		o.TravelDistance = float64(currentSlider.LazyTravelDistance * float32(math.Pow(1+float64(currentSlider.RepeatCount-1)/2.5, 1.0/2.5)))
+		o.TravelDistance = currentSlider.LazyTravelDistance * math.Pow(1+float64(currentSlider.RepeatCount-1)/2.5, 1.0/2.5)
 		o.TravelTime = max(currentSlider.LazyTravelTime/o.Diff.Speed, MinDeltaTime)
 	}
 
 	_, ok1 := o.BaseObject.(*objects.Spinner)
-	_, ok2 := o.lastObject.(*objects.Spinner)
+	_, ok2 := o.LastObject.(*objects.Spinner)
 
 	if ok1 || ok2 {
 		return
@@ -153,20 +157,15 @@ func (o *DifficultyObject) setDistances() {
 
 	scalingFactor := NormalizedRadius / float32(o.Diff.CircleRadiusL)
 
-	if o.Diff.CircleRadiusU < CircleSizeBuffThreshold {
-		smallCircleBonus := min(CircleSizeBuffThreshold-float32(o.Diff.CircleRadiusL), 5.0) / 50.0
-		scalingFactor *= 1.0 + smallCircleBonus
-	}
-
-	lastCursorPosition := getEndCursorPosition(o.lastObject, o.Diff)
+	lastCursorPosition := getEndCursorPosition(o.LastObject, o.Diff)
 
 	o.LazyJumpDistance = float64((o.BaseObject.GetStackedStartPositionMod(o.Diff).Scl(scalingFactor)).Dst(lastCursorPosition.Scl(scalingFactor)))
-	o.MinimumJumpTime = o.StrainTime
+	o.MinimumJumpTime = o.AdjustedDeltaTime
 	o.MinimumJumpDistance = o.LazyJumpDistance
 
-	if lastSlider, ok := o.lastObject.(*LazySlider); ok {
+	if lastSlider, ok := o.LastObject.(*LazySlider); ok {
 		lastTravelTime := max(lastSlider.LazyTravelTime/o.Diff.Speed, MinDeltaTime)
-		o.MinimumJumpTime = max(o.StrainTime-lastTravelTime, MinDeltaTime)
+		o.MinimumJumpTime = max(o.AdjustedDeltaTime-lastTravelTime, MinDeltaTime)
 
 		//
 		// There are two types of slider-to-object patterns to consider in order to better approximate the real movement a player will take to jump between the hitobjects.
@@ -201,7 +200,7 @@ func (o *DifficultyObject) setDistances() {
 
 		lastLastCursorPosition := getEndCursorPosition(o.lastLastObject, o.Diff)
 
-		v1 := lastLastCursorPosition.Sub(o.lastObject.GetStackedStartPositionMod(o.Diff))
+		v1 := lastLastCursorPosition.Sub(o.LastObject.GetStackedStartPositionMod(o.Diff))
 		v2 := o.BaseObject.GetStackedStartPositionMod(o.Diff).Sub(lastCursorPosition)
 		dot := v1.Dot(v2)
 		det := v1.X*v2.Y - v1.Y*v2.X

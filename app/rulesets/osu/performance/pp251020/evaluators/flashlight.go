@@ -1,9 +1,10 @@
 package evaluators
 
 import (
-	"github.com/wieku/danser-go/app/beatmap/difficulty"
-	"github.com/wieku/danser-go/app/rulesets/osu/performance/pp25xxxx/preprocessing"
 	"math"
+
+	"github.com/wieku/danser-go/app/beatmap/difficulty"
+	"github.com/wieku/danser-go/app/rulesets/osu/performance/pp251020/preprocessing"
 )
 
 const (
@@ -19,7 +20,7 @@ func EvaluateFlashlight(current *preprocessing.DifficultyObject) float64 {
 		return 0
 	}
 
-	scalingFactor := 52.0 / current.Diff.CircleRadiusU
+	scalingFactor := 52.0 / current.Diff.CircleRadiusL
 	smallDistNerf := 1.0
 	cumulativeStrainTime := 0.0
 
@@ -32,7 +33,7 @@ func EvaluateFlashlight(current *preprocessing.DifficultyObject) float64 {
 	for i := 0; i < min(current.Index, 10); i++ {
 		currentObj := current.Previous(i)
 
-		cumulativeStrainTime += lastObj.StrainTime
+		cumulativeStrainTime += lastObj.AdjustedDeltaTime
 
 		if !currentObj.IsSpinner {
 			jumpDistance := float64(current.BaseObject.GetStackedStartPositionMod(current.Diff).Dst(currentObj.BaseObject.GetStackedEndPositionMod(currentObj.Diff)))
@@ -74,7 +75,7 @@ func EvaluateFlashlight(current *preprocessing.DifficultyObject) float64 {
 
 	if osuSlider, ok := current.BaseObject.(*preprocessing.LazySlider); ok {
 		// Invert the scaling factor to determine the true travel distance independent of circle size.
-		pixelTravelDistance := float64(osuSlider.LazyTravelDistance) / scalingFactor
+		pixelTravelDistance := osuSlider.LazyTravelDistance / scalingFactor
 
 		// Reward sliders based on velocity.
 		sliderBonus = math.Pow(max(0.0, pixelTravelDistance/current.TravelTime-flMinVelocity), 0.5)

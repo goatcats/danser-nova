@@ -5,7 +5,17 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"io"
+	"log"
+	"os"
+	"path/filepath"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+
 	_ "github.com/mattn/go-sqlite3"
+
 	"github.com/wieku/danser-go/app/beatmap"
 	"github.com/wieku/danser-go/app/rulesets/osu/performance/pp250306"
 	"github.com/wieku/danser-go/app/settings"
@@ -15,14 +25,6 @@ import (
 	"github.com/wieku/danser-go/framework/goroutines"
 	"github.com/wieku/danser-go/framework/math/mutils"
 	"github.com/wieku/danser-go/framework/util"
-	"io"
-	"log"
-	"os"
-	"path/filepath"
-	"slices"
-	"strconv"
-	"strings"
-	"time"
 )
 
 var dbFile *sql.DB
@@ -467,7 +469,7 @@ func UpdateStarRating(maps []*beatmap.BeatMap, progressListener func(processed, 
 				log.Println("DatabaseManager:", bMap.Dir+"/"+bMap.File, "doesn't have enough hitobjects")
 				bMap.Stars = 0
 			} else {
-				attr := difficultyCalc.CalculateSingle(bMap.HitObjects, bMap.Diff)
+				attr := difficultyCalc.CalculateSingle(bMap, bMap.Diff)
 				bMap.Stars = attr.Total
 			}
 

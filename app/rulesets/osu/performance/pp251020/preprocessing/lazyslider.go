@@ -1,10 +1,11 @@
 package preprocessing
 
 import (
+	"slices"
+
 	"github.com/wieku/danser-go/app/beatmap/difficulty"
 	"github.com/wieku/danser-go/app/beatmap/objects"
 	"github.com/wieku/danser-go/framework/math/vector"
-	"slices"
 )
 
 const (
@@ -19,7 +20,7 @@ type LazySlider struct {
 	diff *difficulty.Difficulty
 
 	LazyEndPosition    vector.Vector2f
-	LazyTravelDistance float32
+	LazyTravelDistance float64
 	LazyTravelTime     float64
 }
 
@@ -93,7 +94,7 @@ func (slider *LazySlider) calculateEndPosition() {
 			// this finds the positional delta from the required radius and the current position, and updates the currCursorPosition accordingly, as well as rewarding distance.
 			currCursorPosition = currCursorPosition.Add(currMovement.Scl(float32((currMovementLength - requiredMovement) / currMovementLength)))
 			currMovementLength *= (currMovementLength - requiredMovement) / currMovementLength
-			slider.LazyTravelDistance += float32(currMovementLength)
+			slider.LazyTravelDistance += currMovementLength
 		}
 
 		if i == len(nestedObjects)-1 {

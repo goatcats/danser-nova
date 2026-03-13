@@ -211,7 +211,7 @@ func NewScoreOverlay(ruleset *osu.OsuRuleSet, cursor *graphics.Cursor) *ScoreOve
 
 	overlay.lazerScore = ruleset.GetBeatMap().Diff.CheckModActive(difficulty.Lazer)
 
-	overlay.strainGraph = play.NewStrainGraph(ruleset.GetBeatMap(), performance.GetDifficultyCalculator().CalculateStrainPeaks(ruleset.GetBeatMap().HitObjects, ruleset.GetBeatMap().Diff), false, true)
+	overlay.strainGraph = play.NewStrainGraph(ruleset.GetBeatMap(), performance.GetDifficultyCalculator().CalculateStrainPeaks(ruleset.GetBeatMap(), ruleset.GetBeatMap().Diff), false, true)
 
 	overlay.resultsFade = animation.NewGlider(0)
 

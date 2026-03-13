@@ -28,6 +28,13 @@ type Attributes struct {
 	Sliders     int
 	Spinners    int
 	MaxCombo    int
+
+	// new stuff post 2025-10-29
+	AimTopWeightedSliderFactor   float64
+	SpeedTopWeightedSliderFactor float64
+	NestedScorePerObject         float64
+	LegacyScoreBaseMultiplier    float64
+	MaximumLegacyComboScore      int64
 }
 
 // StrainPeaks contains peaks of Aim, Speed and Flashlight skills, as well as peaks passed through star rating formula

@@ -114,7 +114,7 @@ func (m *timePopup) drawStrainGraph() {
 			beatmap.ParseTimingPointsAndPauses(m.timeCMap)
 			beatmap.ParseObjects(m.timeCMap, true, false)
 
-			m.peaks = performance.GetDifficultyCalculator().CalculateStrainPeaks(m.timeCMap.HitObjects, m.timeCMap.Diff)
+			m.peaks = performance.GetDifficultyCalculator().CalculateStrainPeaks(m.timeCMap, m.timeCMap.Diff)
 
 			m.graphStatus = ""
 		})

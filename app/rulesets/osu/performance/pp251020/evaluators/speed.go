@@ -1,18 +1,19 @@
 package evaluators
 
 import (
+	"math"
+
 	"github.com/wieku/danser-go/app/beatmap/difficulty"
-	"github.com/wieku/danser-go/app/rulesets/osu/performance/pp25xxxx/preprocessing"
+	"github.com/wieku/danser-go/app/rulesets/osu/performance/pp251020/preprocessing"
 	"github.com/wieku/danser-go/app/rulesets/osu/performance/putils"
 	"github.com/wieku/danser-go/framework/math/mutils"
-	"math"
 )
 
 const (
 	speedSingleSpacingThreshold float64 = preprocessing.NormalizedRadius * 2 * 1.25
 	speedMinSpeedBonus          float64 = 200 // 200 BPM 1/4th
 	speedBalancingFactor        float64 = 40
-	speedDistanceMultiplier     float64 = 0.9
+	speedDistanceMultiplier     float64 = 0.8
 )
 
 func EvaluateSpeed(current *preprocessing.DifficultyObject) float64 {
@@ -23,7 +24,7 @@ func EvaluateSpeed(current *preprocessing.DifficultyObject) float64 {
 	osuCurrObj := current
 	osuPrevObj := current.Previous(0)
 
-	strainTime := osuCurrObj.StrainTime
+	strainTime := osuCurrObj.AdjustedDeltaTime
 	doubletapness := 1.0 - osuCurrObj.GetDoubletapness(current.Next(0))
 
 	// Cap deltatime to the OD 300 hitwindow.
@@ -48,6 +49,9 @@ func EvaluateSpeed(current *preprocessing.DifficultyObject) float64 {
 
 	// Max distance bonus is 1 * `distance_multiplier` at single_spacing_threshold
 	distanceBonus := math.Pow(distance/speedSingleSpacingThreshold, 3.95) * speedDistanceMultiplier
+
+	// Apply reduced small circle bonus because flow aim difficulty on small circles doesn't scale as hard as jumps
+	distanceBonus *= math.Sqrt(osuCurrObj.SmallCircleBonus)
 
 	if current.Diff.CheckModActive(difficulty.Relax2) {
 		distanceBonus = 0

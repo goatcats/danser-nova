@@ -1,8 +1,9 @@
 package putils
 
 import (
-	"github.com/wieku/danser-go/framework/math/mutils"
 	"math"
+
+	"github.com/wieku/danser-go/framework/math/mutils"
 )
 
 func BPMToMillisecondsD(bpm float64) float64 {
@@ -33,6 +34,18 @@ func Smoothstep(x, start, end float64) float64 {
 	x = mutils.Clamp((x-start)/(end-start), 0, 1)
 
 	return x * x * (3.0 - 2.0*x)
+}
+
+func SmoothstepBellCurve(x, mean, width float64) float64 {
+	x -= mean
+
+	if x > 0 {
+		x = width - x
+	} else {
+		x = width + x
+	}
+
+	return Smoothstep(x, 0, width)
 }
 
 func Smootherstep(x, start, end float64) float64 {
