@@ -1762,14 +1762,18 @@ func (l *launcher) startDanser() {
 				l.encodeInProgress = true
 				l.encodeStart = time.Now()
 
-				gcontext.StartProgress()
+				goroutines.CallMain(func() {
+					gcontext.StartProgress()
+				})
 			}
 
 			if strings.Contains(line, "Finishing rendering") {
 				l.encodeInProgress = false
 
 				l.recordProgress = 1
-				gcontext.SetProgress(1)
+				goroutines.CallMain(func() {
+					gcontext.SetProgress(1)
+				})
 
 				l.recordStatus = "Finalizing..."
 				l.recordStatusSpeed = ""
@@ -1806,7 +1810,9 @@ func (l *launcher) startDanser() {
 				at, _ := strconv.Atoi(spl[:len(spl)-1])
 
 				l.recordProgress = float32(at) / 100
-				gcontext.SetProgress(l.recordProgress)
+				goroutines.CallMain(func() {
+					gcontext.SetProgress(l.recordProgress)
+				})
 			}
 		}
 
@@ -1867,7 +1873,9 @@ func (l *launcher) danserCleanup(success bool) {
 	l.danserCmd = nil
 
 	if !success {
-		gcontext.StopProgress()
+		goroutines.CallMain(func() {
+			gcontext.StopProgress()
+		})
 		l.recordStatus = ""
 		l.showProgressBar = false
 	}
