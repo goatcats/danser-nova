@@ -8,7 +8,8 @@ require (
 	github.com/AllenDang/cimgui-go v1.0.0
 	github.com/EdlinOrg/prominentcolor v1.0.0
 	github.com/Microsoft/go-winio v0.6.1
-	github.com/Zyko0/go-sdl3 v0.0.0-20250728161448-bc9bb5e56afe
+	github.com/TheTitanrain/w32 v0.0.0-20180517000239-4f5cfb03fabf
+	github.com/Zyko0/go-sdl3 v0.0.0-20260125144524-02de3d449cb1
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/go-gl/gl v0.0.0-20210813123233-e4099ee2221f
@@ -22,14 +23,13 @@ require (
 	github.com/sqweek/dialog v0.0.0-20220504154117-be45b268883a
 	github.com/wieku/rplpa v1.0.2
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
-	golang.org/x/image v0.25.0
+	golang.org/x/image v0.34.0
 	golang.org/x/oauth2 v0.28.0
-	golang.org/x/sys v0.31.0
-	golang.org/x/text v0.23.0
+	golang.org/x/sys v0.38.0
+	golang.org/x/text v0.32.0
 )
 
 require (
-	github.com/TheTitanrain/w32 v0.0.0-20180517000239-4f5cfb03fabf // indirect
 	github.com/Zyko0/purego-gen v0.0.0-20250727121216-3bcd331a1e0c // indirect
 	github.com/ananagame/rich-go v0.0.0-20210525072106-9d45f0e06959 // indirect
 	github.com/bnch/uleb128 v0.0.0-20160221084957-fac1fe18ad59 // indirect
@@ -47,14 +47,12 @@ require (
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/mod v0.24.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
-	golang.org/x/tools v0.31.0 // indirect
+	golang.org/x/mod v0.30.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
+	golang.org/x/tools v0.39.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 )
 
 replace github.com/sqweek/dialog => github.com/wieku/dialog v1.0.0
 
 replace github.com/AllenDang/cimgui-go => github.com/Wieku/cimgui-go v1.0.0
-
-replace github.com/Zyko0/go-sdl3 => github.com/wieku/go-sdl3 v1.0.1
