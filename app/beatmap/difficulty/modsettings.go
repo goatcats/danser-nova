@@ -1,6 +1,10 @@
 package difficulty
 
-import "reflect"
+import (
+	"reflect"
+
+	"github.com/wieku/danser-go/framework/math/mutils"
+)
 
 var modConfigs map[Modifier]reflect.Type
 
@@ -35,6 +39,7 @@ func NewSpeedSettings(rate float64, adjustPitch bool) SpeedSettings {
 }
 
 func (s SpeedSettings) postLoad() SpeedSettings {
+	s.SpeedChange = mutils.Clamp(s.SpeedChange, 0.1, 10)
 	return s
 }
 
