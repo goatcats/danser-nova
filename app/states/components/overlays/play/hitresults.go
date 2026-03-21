@@ -142,7 +142,7 @@ func (results *HitResults) AddResult(time int64, result osu.HitResult, position 
 	}
 
 	lighting := sprite.NewSpriteSingle(skin.GetTexture("lighting"), float64(time), position, vector.Centre)
-	lighting.SetColor(skin.GetColor(int(object.GetComboSet()), int(object.GetComboSetHax()), results.color))
+	lighting.SetColor(skin.GetObjectColor(int(object.GetComboSet()), int(object.GetComboSetHax()), results.color))
 	lighting.SetAdditive(true)
 	lighting.AddTransformUnordered(animation.NewSingleTransform(animation.Scale, easing.OutQuad, float64(time), float64(time+600), 0.8, 1.2))
 	lighting.AddTransformUnordered(animation.NewSingleTransform(animation.Fade, easing.Linear, float64(time), float64(time+200), 0, 1))

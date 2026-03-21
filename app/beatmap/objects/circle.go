@@ -330,7 +330,7 @@ func (circle *Circle) Draw(time float64, color color2.Color, batch *batch.QuadBa
 
 	batch.SetColor(1, 1, 1, alpha)
 
-	circle.hitCircle.SetColor(skin.GetColor(int(circle.ComboSet), int(circle.ComboSetHax), color))
+	circle.hitCircle.SetColor(skin.GetObjectColor(int(circle.ComboSet), int(circle.ComboSetHax), color))
 
 	drawCircle := !circle.SliderPoint || circle.SliderPointStart || settings.Objects.Sliders.DrawEndCircles
 
@@ -385,7 +385,7 @@ func (circle *Circle) DrawApproach(time float64, color color2.Color, batch *batc
 	batch.SetTranslation(position.Copy64())
 	batch.SetColor(1, 1, 1, float64(color.A))
 
-	circle.approachCircle.SetColor(skin.GetColor(int(circle.ComboSet), int(circle.ComboSetHax), color))
+	circle.approachCircle.SetColor(skin.GetObjectColor(int(circle.ComboSet), int(circle.ComboSetHax), color))
 
 	circle.approachCircle.Draw(time, batch)
 }

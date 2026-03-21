@@ -907,7 +907,7 @@ func (overlay *ScoreOverlay) drawKeys(batch *batch.QuadBatch, alpha float64) {
 
 	overlay.keyOverlay.Draw(overlay.lastTime, batch)
 
-	col := skin.GetInfo().InputOverlayText
+	col := skin.GetColor(skin.InputOverlayText)
 	batch.SetColor(float64(col.R), float64(col.G), float64(col.B), keyAlpha)
 
 	for i, k := range overlay.keyInfos {

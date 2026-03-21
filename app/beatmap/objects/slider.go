@@ -1040,12 +1040,12 @@ func (slider *Slider) DrawBody(_ float64, circleColor, bodyColor, innerBorder, o
 	bodyOuter := color2.NewL(0)
 
 	if slider.diff.CheckModActive(difficulty.Traceable) && slider.HitObjectID != 0 {
-		borderInner = skin.GetColor(int(slider.ComboSet), int(slider.ComboSetHax), circleColor)
+		borderInner = skin.GetObjectColor(int(slider.ComboSet), int(slider.ComboSetHax), circleColor)
 		borderOuter = borderInner
 		bodyOpacityInner = 0
 		bodyOpacityOuter = 0
 	} else if settings.Skin.UseColorsFromSkin {
-		borderOuter = skin.GetInfo().SliderBorder
+		borderOuter = skin.GetColor(skin.SliderBorder)
 		borderInner = borderOuter
 
 		borderOuter.A = float32(colorAlpha)
@@ -1053,22 +1053,22 @@ func (slider *Slider) DrawBody(_ float64, circleColor, bodyColor, innerBorder, o
 
 		var baseTrack color2.Color
 
-		if skin.GetInfo().SliderTrackOverride != nil {
-			baseTrack = *skin.GetInfo().SliderTrackOverride
+		if c, ok := skin.TryGetColor(skin.SliderTrackOverride); ok {
+			baseTrack = c
 		} else {
-			baseTrack = skin.GetColor(int(slider.ComboSet), int(slider.ComboSetHax), baseTrack)
+			baseTrack = skin.GetObjectColor(int(slider.ComboSet), int(slider.ComboSetHax), baseTrack)
 		}
 
 		bodyOuter = baseTrack.Shade2(-0.1)
 		bodyInner = baseTrack.Shade2(0.5)
 	} else {
 		if settings.Objects.Colors.Sliders.Border.UseHitCircleColor {
-			borderInner = skin.GetColor(int(slider.ComboSet), int(slider.ComboSetHax), borderInner)
-			borderOuter = skin.GetColor(int(slider.ComboSet), int(slider.ComboSetHax), borderOuter)
+			borderInner = skin.GetObjectColor(int(slider.ComboSet), int(slider.ComboSetHax), borderInner)
+			borderOuter = skin.GetObjectColor(int(slider.ComboSet), int(slider.ComboSetHax), borderOuter)
 		}
 
 		if settings.Objects.Colors.Sliders.Body.UseHitCircleColor {
-			bodyColor = skin.GetColor(int(slider.ComboSet), int(slider.ComboSetHax), bodyColor)
+			bodyColor = skin.GetObjectColor(int(slider.ComboSet), int(slider.ComboSetHax), bodyColor)
 		}
 
 		if settings.Objects.Colors.Sliders.Border.EnableCustomGradientOffset {
@@ -1173,14 +1173,14 @@ func (slider *Slider) drawBall(time float64, batch *batch.QuadBatch, color color
 		color := color2.NewL(1)
 
 		if skin.GetInfo().SliderBallTint {
-			color = skin.GetColor(int(slider.ComboSet), int(slider.ComboSetHax), color)
-		} else if skin.GetInfo().SliderBall != nil {
-			color = *skin.GetInfo().SliderBall
+			color = skin.GetObjectColor(int(slider.ComboSet), int(slider.ComboSetHax), color)
+		} else if c, ok := skin.TryGetColor(skin.SliderBall); ok {
+			color = c
 		}
 
 		batch.SetColor(float64(color.R), float64(color.G), float64(color.B), alpha)
 	} else if settings.Objects.Colors.Sliders.SliderBallTint {
-		color = skin.GetColor(int(slider.ComboSet), int(slider.ComboSetHax), color)
+		color = skin.GetObjectColor(int(slider.ComboSet), int(slider.ComboSetHax), color)
 		batch.SetColor(float64(color.R), float64(color.G), float64(color.B), alpha)
 	} else {
 		batch.SetColor(1, 1, 1, alpha)
