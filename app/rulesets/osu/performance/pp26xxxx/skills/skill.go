@@ -2,13 +2,11 @@ package skills
 
 import (
 	"math"
-	"slices"
 
 	"github.com/wieku/danser-go/app/beatmap/difficulty"
 	"github.com/wieku/danser-go/app/rulesets/osu/performance/pp26xxxx/preprocessing"
 	"github.com/wieku/danser-go/app/rulesets/osu/performance/putils"
 	"github.com/wieku/danser-go/framework/collections"
-	"github.com/wieku/danser-go/framework/math/mutils"
 )
 
 type Skill struct {
@@ -18,22 +16,16 @@ type Skill struct {
 	// The length of each strain section.
 	SectionLength float64
 
-	// Number of sections which strain value will be reduced.
-	ReducedSectionCount int
-
-	// Multiplier applied to the section with the biggest strain.
-	ReducedStrainBaseline float64
-
 	// Delegate to calculate strain value of skill
 	StrainValueOf func(obj *preprocessing.DifficultyObject) float64
 	PostProcess   func(obj *preprocessing.DifficultyObject, strain, diffValue float64)
 
 	CalculateInitialStrain func(time float64, current *preprocessing.DifficultyObject) float64
 
+	CalculateDifficulty func() float64
+
 	currentSectionPeak float64
 	currentSectionEnd  float64
-
-	peakWeights []float64
 
 	strainPeaks       []float64
 	strainPeaksSorted *collections.SortedList[float64]
@@ -49,13 +41,11 @@ type Skill struct {
 
 func NewSkill(d *difficulty.Difficulty, stepCalc bool) *Skill {
 	skill := &Skill{
-		DecayWeight:           0.9,
-		SectionLength:         400,
-		ReducedSectionCount:   10,
-		ReducedStrainBaseline: 0.75,
-		strainPeaksSorted:     collections.NewSortedList[float64](),
-		diff:                  d,
-		stepCalc:              stepCalc,
+		DecayWeight:       0.9,
+		SectionLength:     400,
+		strainPeaksSorted: collections.NewSortedList[float64](),
+		diff:              d,
+		stepCalc:          stepCalc,
 	}
 
 	skill.diffStrains = putils.NewLogisticSum(stepCalc,
@@ -66,9 +56,11 @@ func NewSkill(d *difficulty.Difficulty, stepCalc bool) *Skill {
 			return previous != current
 		},
 		func(strains []float64) float64 {
-			return skill.DifficultyValue() / 10
+			return skill.DifficultyValue() * (1 - skill.DecayWeight)
 		},
 	)
+
+	skill.CalculateDifficulty = skill.defaultDifficulty
 
 	return skill
 }
@@ -91,9 +83,9 @@ func (skill *Skill) Process(current *preprocessing.DifficultyObject) {
 		return
 	}
 
-	skill.difficultyValue()
+	skill.difficulty = skill.CalculateDifficulty()
 
-	skill.diffStrains.ProcessLastStrain(skill.difficulty / 10)
+	skill.diffStrains.ProcessLastStrain(skill.difficulty * (1 - skill.DecayWeight))
 
 	if skill.PostProcess != nil {
 		skill.PostProcess(current, currentStrain, skill.difficulty)
@@ -136,47 +128,26 @@ func (skill *Skill) getCurrentStrainPeaksSorted() []float64 {
 	return peaks.Slice
 }
 
-func (skill *Skill) difficultyValue() float64 {
-	if skill.peakWeights == nil { //Precalculated peak weights
-		skill.peakWeights = make([]float64, skill.ReducedSectionCount)
-		for i := range skill.ReducedSectionCount {
-			scale := math.Log10(mutils.Lerp(1.0, 10.0, mutils.Clamp(float64(i)/float64(skill.ReducedSectionCount), 0, 1)))
-			skill.peakWeights[i] = mutils.Lerp(skill.ReducedStrainBaseline, 1.0, scale)
-		}
-	}
-
-	skill.difficulty = 0.0
+func (skill *Skill) defaultDifficulty() float64 {
+	diffValue := 0.0
 	weight := 1.0
 
 	strains := skill.getCurrentStrainPeaksSorted()
 
-	lowest := strains[len(strains)-1]
-
-	sectionsReduced := min(len(strains), skill.ReducedSectionCount)
-
-	for i := range sectionsReduced {
-		strains[len(strains)-1-i] *= skill.peakWeights[i]
-		lowest = min(lowest, strains[len(strains)-1-i])
-	}
-
-	// Search for lowest strain that's higher or equal than lowest reduced strain to avoid unnecessary sorting
-	idx, _ := slices.BinarySearch(strains[:len(strains)-sectionsReduced], lowest)
-	slices.Sort(strains[idx:])
-
 	lastDiff := -math.MaxFloat64
 
 	for i := range len(strains) {
-		skill.difficulty += strains[len(strains)-1-i] * weight
+		diffValue += strains[len(strains)-1-i] * weight
 		weight *= skill.DecayWeight
 
-		if math.Abs(skill.difficulty-lastDiff) < math.SmallestNonzeroFloat64 { // escape when strain * weight calculates to 0
+		if math.Abs(diffValue-lastDiff) < math.SmallestNonzeroFloat64 { // escape when strain * weight calculates to 0
 			break
 		}
 
-		lastDiff = skill.difficulty
+		lastDiff = diffValue
 	}
 
-	return skill.difficulty
+	return diffValue
 }
 
 func (skill *Skill) DifficultyValue() float64 {
@@ -184,7 +155,7 @@ func (skill *Skill) DifficultyValue() float64 {
 		return skill.difficulty
 	}
 
-	return skill.difficultyValue()
+	return skill.CalculateDifficulty()
 }
 
 func (skill *Skill) CountTopWeightedStrains() float64 {
@@ -204,5 +175,5 @@ func (skill *Skill) startNewSectionFrom(end float64, current *preprocessing.Diff
 }
 
 func DefaultDifficultyToPerformance(difficulty float64) float64 {
-	return math.Pow(5.0*max(1.0, difficulty/0.0675)-4.0, 3.0) / 100000.0
+	return 4.0 * math.Pow(difficulty, 3.0)
 }

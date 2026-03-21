@@ -157,6 +157,8 @@ func NewOsuRuleset(beatMap *beatmap.BeatMap, cursors []*graphics.Cursor, diffs [
 		}
 	}
 
+	diffCalc := performance.GetDifficultyCalculator()
+
 	for i, cursor := range cursors {
 		diff := diffs[i]
 
@@ -177,35 +179,37 @@ func NewOsuRuleset(beatMap *beatmap.BeatMap, cursors []*graphics.Cursor, diffs [
 		if ruleset.oppDiffs[player.maskedModString] == nil {
 			player.diff.DiffCalcMode = true // To use lazer's stack offset for stable plays without having to put LZ mod
 
-			ruleset.oppDiffs[player.maskedModString] = performance.GetDifficultyCalculator().CalculateStep(ruleset.beatMap, player.diff)
+			ruleset.oppDiffs[player.maskedModString] = diffCalc.CalculateStep(ruleset.beatMap, player.diff)
 
 			player.diff.DiffCalcMode = false
 
 			star := ruleset.oppDiffs[player.maskedModString][len(ruleset.oppDiffs[player.maskedModString])-1]
 
 			log.Println("Stars:")
-			log.Println("\tAim:  ", star.Aim)
-			log.Println("\tSpeed:", star.Speed)
+			log.Println("\tAim:    ", star.Aim)
+			log.Println("\tSpeed:  ", star.Speed)
 
-			if diff.CheckModActive(difficulty.Flashlight) {
-				log.Println("\tFlash:", star.Flashlight)
+			if diffCalc.GetVersion() >= 20260101 {
+				log.Println("\tReading:", star.Reading)
+			} else if diff.CheckModActive(difficulty.Flashlight) {
+				log.Println("\tFlash:  ", star.Flashlight)
 			}
 
-			log.Println("\tTotal:", star.Total)
+			log.Println("\tTotal:  ", star.Total)
 
 			pp := performance.CreatePPCalculator()
 			ppResults := pp.Calculate(star, api.PerfScore{CountGreat: -1, MaxCombo: -1, Accuracy: 1, SliderEnd: -1}, diff)
 
 			log.Println("SS PP:")
-			log.Println("\tAim:  ", ppResults.Aim)
-			log.Println("\tTap:  ", ppResults.Speed)
-
-			if diff.CheckModActive(difficulty.Flashlight) {
-				log.Println("\tFlash:", star.Flashlight)
+			log.Println("\tAim:    ", ppResults.Aim)
+			log.Println("\tTap:    ", ppResults.Speed)
+			log.Println("\tAcc:    ", ppResults.Acc)
+			if diffCalc.GetVersion() >= 20260101 {
+				log.Println("\tReading:", ppResults.Cognition)
+			} else if diff.CheckModActive(difficulty.Flashlight) {
+				log.Println("\tFlash:  ", ppResults.Flashlight)
 			}
-
-			log.Println("\tAcc:  ", ppResults.Acc)
-			log.Println("\tTotal:", ppResults.Total)
+			log.Println("\tTotal:  ", ppResults.Total)
 		}
 
 		log.Println(fmt.Sprintf("Calculating HP rates for \"%s\"...", cursor.Name))

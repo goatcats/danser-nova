@@ -1,10 +1,11 @@
 package skills
 
 import (
+	"math"
+
 	"github.com/wieku/danser-go/app/beatmap/difficulty"
 	"github.com/wieku/danser-go/app/rulesets/osu/performance/pp26xxxx/evaluators"
 	"github.com/wieku/danser-go/app/rulesets/osu/performance/pp26xxxx/preprocessing"
-	"math"
 )
 
 const (
@@ -22,6 +23,7 @@ func NewFlashlightSkill(d *difficulty.Difficulty) *Flashlight {
 
 	skill.StrainValueOf = skill.flashlightStrainValue
 	skill.CalculateInitialStrain = skill.flInitialStrain
+	skill.CalculateDifficulty = skill.flDifficulty
 
 	return skill
 }
@@ -41,7 +43,7 @@ func (s *Flashlight) flashlightStrainValue(current *preprocessing.DifficultyObje
 	return s.currentStrain
 }
 
-func (s *Flashlight) DifficultyValue() float64 {
+func (s *Flashlight) flDifficulty() float64 {
 	diff := 0.0
 
 	for _, strain := range s.GetCurrentStrainPeaks() {

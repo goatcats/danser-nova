@@ -12,8 +12,8 @@ import (
 const (
 	rhythmHistoryTimeMax    = 5000.0
 	rhythmHistoryObjectsMax = 32
-	rhythmMultiplier        = 1.0
-	rhythmRatioMultiplier   = 15.0
+	rhythmMultiplier        = 0.8
+	rhythmRatioMultiplier   = 32
 	rhythmMinDeltaTime      = 25
 )
 
@@ -50,6 +50,9 @@ func EvaluateRhythm(current *preprocessing.DifficultyObject) float64 {
 
 	for i := rhythmStart; i > 0; i-- {
 		currObj := current.Previous(i - 1)
+		if currObj.IsSpinner {
+			continue
+		}
 
 		// scales note 0 to 1 from history to now
 		timeDecay := (rhythmHistoryTimeMax - (current.StartTime - currObj.StartTime)) / rhythmHistoryTimeMax
@@ -65,17 +68,26 @@ func EvaluateRhythm(current *preprocessing.DifficultyObject) float64 {
 		// this function is meant to reduce rhythm bonus for deltas that are multiples of each other (i.e 100 and 200)
 		deltaDifference := max(prevDelta, currDelta) / min(prevDelta, currDelta)
 
-		// Take only the fractional part of the value since we're only interested in punishing multiples
-		deltaDifferenceFraction := deltaDifference - math.Trunc(deltaDifference)
-
-		currRatio := 1.0 + rhythmRatioMultiplier*min(0.5, putils.SmoothstepBellCurve(deltaDifferenceFraction, 0.5, 0.5))
-
 		// reduce ratio bonus if delta difference is too big
 		differenceMultiplier := mutils.Clamp(2.0-deltaDifference/8.0, 0.0, 1.0)
 
 		windowPenalty := min(1, max(0, math.Abs(prevDelta-currDelta)-deltaDifferenceEpsilon)/deltaDifferenceEpsilon)
 
-		effectiveRatio := windowPenalty * currRatio * differenceMultiplier
+		effectiveRatio := getEffectiveRatio(deltaDifference) * windowPenalty * differenceMultiplier
+
+		// if previous object is a slider it might be easier to tap since you don't have to do a whole tapping motion
+		// while a full deltatime might end up some weird ratio the "unpress->tap" motion might be simple
+		// for example a slider-circle-circle pattern should be evaluated as a regular triple and not as a single->double
+		if prevObj.IsSlider {
+			sliderLazyEndDelta := currObj.MinimumJumpTime
+			sliderLazyDeltaDifference := max(sliderLazyEndDelta, currDelta) / min(sliderLazyEndDelta, currDelta)
+
+			sliderRealEndDelta := currObj.LastObjectEndDeltaTime
+			sliderRealDeltaDifference := max(sliderRealEndDelta, currDelta) / min(sliderRealEndDelta, currDelta)
+
+			sliderEffectiveRatio := min(getEffectiveRatio(sliderLazyDeltaDifference), getEffectiveRatio(sliderRealDeltaDifference))
+			effectiveRatio = min(sliderEffectiveRatio, effectiveRatio)
+		}
 
 		if firstDeltaSwitch {
 			if math.Abs(prevDelta-currDelta) < deltaDifferenceEpsilon {
@@ -83,13 +95,7 @@ func EvaluateRhythm(current *preprocessing.DifficultyObject) float64 {
 			} else {
 				// bpm change is into slider, this is easy acc window
 				if currObj.IsSlider {
-					effectiveRatio *= 0.125
-				}
-
-				// bpm change was from a slider, this is easier typically than circle -> circle
-				// unintentional side effect is that bursts with kicksliders at the ends might have lower difficulty than bursts without sliders
-				if prevObj.IsSlider {
-					effectiveRatio *= 0.3
+					effectiveRatio *= 0.5
 				}
 
 				// repeated island polarity (2 -> 4, 3 -> 5)
@@ -165,10 +171,14 @@ func EvaluateRhythm(current *preprocessing.DifficultyObject) float64 {
 		prevObj = currObj
 	}
 
-	rhythmDifficulty := math.Sqrt(4+rhythmComplexitySum*rhythmMultiplier) / 2 //produces multiplier that can be applied to strain. range [1, infinity) (not really though)
-	rhythmDifficulty *= 1 - current.GetDoubletapness(current.Next(0))
+	return math.Sqrt(4+rhythmComplexitySum*rhythmMultiplier) / 2.0
+}
 
-	return rhythmDifficulty
+func getEffectiveRatio(deltaDifference float64) float64 {
+	// Take only the fractional part of the value since we're only interested in punishing multiples
+	deltaDifferenceFraction := deltaDifference - math.Trunc(deltaDifference)
+
+	return 1.0 + rhythmRatioMultiplier*min(0.5, putils.SmoothstepBellCurve(deltaDifferenceFraction, 0.5, 0.5))
 }
 
 type pair struct {
@@ -210,7 +220,12 @@ func (island *Island) addDelta(delta int) {
 }
 
 func (island *Island) isSimilarPolarity(other *Island) bool {
-	return island.deltaCount%2 == other.deltaCount%2
+	if island.deltaCount <= 1 || other.deltaCount <= 1 {
+		return false
+	}
+
+	return math.Abs(float64(island.delta-other.delta)) < island.deltaDifferenceEpsilon &&
+		island.deltaCount%2 == other.deltaCount%2
 }
 
 func (island *Island) equals(other *Island) bool {

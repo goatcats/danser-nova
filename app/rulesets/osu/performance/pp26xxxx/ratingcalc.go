@@ -4,29 +4,21 @@ import (
 	"math"
 
 	"github.com/wieku/danser-go/app/beatmap/difficulty"
-	"github.com/wieku/danser-go/app/rulesets/osu/performance/putils"
-	"github.com/wieku/danser-go/framework/math/mutils"
 )
 
 const difficultyMultiplier = 0.0675
 
 type osuRatingCalculator struct {
-	diff                       *difficulty.Difficulty
-	totalHits                  int
-	approachRate               float64
-	overallDifficulty          float64
-	mechanicalDifficultyRating float64
-	sliderFactor               float64
+	diff              *difficulty.Difficulty
+	totalHits         int
+	overallDifficulty float64
 }
 
-func newOsuRatingCalculator(diff *difficulty.Difficulty, totalHits int, approachRate, overallDifficulty, mechanicalDifficultyRating, sliderFactor float64) *osuRatingCalculator {
+func newOsuRatingCalculator(diff *difficulty.Difficulty, totalHits int, overallDifficulty float64) *osuRatingCalculator {
 	return &osuRatingCalculator{
-		diff:                       diff,
-		totalHits:                  totalHits,
-		approachRate:               approachRate,
-		overallDifficulty:          overallDifficulty,
-		mechanicalDifficultyRating: mechanicalDifficultyRating,
-		sliderFactor:               sliderFactor,
+		diff:              diff,
+		totalHits:         totalHits,
+		overallDifficulty: overallDifficulty,
 	}
 }
 
@@ -35,38 +27,13 @@ func (c *osuRatingCalculator) ComputeAimRating(aimDifficultyValue float64) float
 		return 0
 	}
 
-	aimRating := CalculateDifficultyRating(aimDifficultyValue)
-
-	if c.diff.CheckModActive(difficulty.TouchDevice) {
-		aimRating = math.Pow(aimRating, 0.8)
-	}
+	aimRating := math.Pow(aimDifficultyValue, 0.63) * 0.02275
 
 	if c.diff.CheckModActive(difficulty.Relax) {
 		aimRating *= 0.9
 	}
 
 	ratingMultiplier := 1.0
-
-	approachRateLengthBonus := 0.95 + 0.4*min(1.0, float64(c.totalHits)/2000.0) +
-		ternary(c.totalHits > 2000, math.Log10(float64(c.totalHits)/2000.0)*0.5, 0.0)
-
-	approachRateFactor := 0.0
-	if c.approachRate > 10.33 {
-		approachRateFactor = 0.3 * (c.approachRate - 10.33)
-	} else if c.approachRate < 8.0 {
-		approachRateFactor = 0.05 * (8.0 - c.approachRate)
-	}
-
-	if c.diff.CheckModActive(difficulty.Relax) {
-		approachRateFactor = 0.0
-	}
-
-	ratingMultiplier += approachRateFactor * approachRateLengthBonus // Buff for longer maps with high AR.
-
-	if c.diff.CheckModActive(difficulty.Hidden) {
-		visibilityFactor := c.calculateAimVisibilityFactor(c.approachRate)
-		ratingMultiplier += calculateVisibilityBonusVFSF(c.diff, c.approachRate, visibilityFactor, c.sliderFactor)
-	}
 
 	// It is important to consider accuracy difficulty when scaling with accuracy.
 	ratingMultiplier *= 0.98 + math.Pow(max(0, c.overallDifficulty), 2)/2500
@@ -85,30 +52,27 @@ func (c *osuRatingCalculator) ComputeSpeedRating(speedDifficultyValue float64) f
 		speedRating *= 0.5
 	}
 
+	return speedRating
+}
+
+func (c *osuRatingCalculator) computeReadingRating(readingDifficultyValue float64) float64 {
+	readingRating := CalculateDifficultyRating(readingDifficultyValue)
+
+	if c.diff.CheckModActive(difficulty.TouchDevice) {
+		readingRating = math.Pow(readingRating, 0.8)
+	}
+
+	if c.diff.CheckModActive(difficulty.Relax) {
+		readingRating *= 0.6
+	} else if c.diff.CheckModActive(difficulty.Relax2) {
+		readingRating *= 0.3
+	}
+
 	ratingMultiplier := 1.0
 
-	approachRateLengthBonus := 0.95 + 0.4*min(1.0, float64(c.totalHits)/2000.0) +
-		ternary(c.totalHits > 2000, math.Log10(float64(c.totalHits)/2000.0)*0.5, 0.0)
+	ratingMultiplier *= 0.75 + math.Pow(max(0, c.overallDifficulty), 2.2)/800
 
-	approachRateFactor := 0.0
-	if c.approachRate > 10.33 {
-		approachRateFactor = 0.3 * (c.approachRate - 10.33)
-	}
-
-	if c.diff.CheckModActive(difficulty.Relax2) {
-		approachRateFactor = 0.0
-	}
-
-	ratingMultiplier += approachRateFactor * approachRateLengthBonus // Buff for longer maps with high AR.
-
-	if c.diff.CheckModActive(difficulty.Hidden) {
-		visibilityFactor := c.calculateSpeedVisibilityFactor(c.approachRate)
-		ratingMultiplier += calculateVisibilityBonusVF(c.diff, c.approachRate, visibilityFactor)
-	}
-
-	ratingMultiplier *= 0.95 + math.Pow(max(0, c.overallDifficulty), 2)/750
-
-	return speedRating * math.Cbrt(ratingMultiplier)
+	return readingRating * math.Cbrt(ratingMultiplier)
 }
 
 func (c *osuRatingCalculator) ComputeFlashlightRating(flashlightDifficultyValue float64) float64 {
@@ -142,24 +106,6 @@ func (c *osuRatingCalculator) ComputeFlashlightRating(flashlightDifficultyValue 
 
 func CalculateDifficultyRating(difficultyValue float64) float64 {
 	return math.Sqrt(difficultyValue) * difficultyMultiplier
-}
-
-func (c *osuRatingCalculator) calculateAimVisibilityFactor(approachRate float64) float64 {
-	const arFactorEndPoint = 11.5
-
-	mechanicalDifficultyFactor := putils.ReverseLerp(c.mechanicalDifficultyRating, 5, 10)
-	arFactorStartingPoint := mutils.Lerp(9, 10.33, mechanicalDifficultyFactor)
-
-	return putils.ReverseLerp(approachRate, arFactorEndPoint, arFactorStartingPoint)
-}
-
-func (c *osuRatingCalculator) calculateSpeedVisibilityFactor(approachRate float64) float64 {
-	const arFactorEndPoint = 11.5
-
-	mechanicalDifficultyFactor := putils.ReverseLerp(c.mechanicalDifficultyRating, 5, 10)
-	arFactorStartingPoint := mutils.Lerp(10, 10.33, mechanicalDifficultyFactor)
-
-	return putils.ReverseLerp(approachRate, arFactorEndPoint, arFactorStartingPoint)
 }
 
 func calculateVisibilityBonus(diff *difficulty.Difficulty, approachRate float64) float64 {

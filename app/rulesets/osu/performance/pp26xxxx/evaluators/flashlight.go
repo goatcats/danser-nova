@@ -46,7 +46,7 @@ func EvaluateFlashlight(current *preprocessing.DifficultyObject) float64 {
 			// We also want to nerf stacks so that only the first object of the stack is accounted for.
 			stackNerf := min(1.0, (currentObj.LazyJumpDistance/scalingFactor)/25.0)
 
-			opacityBonus := 1.0 + flMaxOpacityBonus*(1.0-current.OpacityAt(currentObj.BaseObject.GetStartTime()))
+			opacityBonus := 1.0 + flMaxOpacityBonus*(1.0-current.OpacityAt(currentObj.BaseObject.GetStartTime(), current.Diff.CheckModActive(difficulty.Hidden)))
 
 			result += stackNerf * opacityBonus * scalingFactor * jumpDistance / cumulativeStrainTime
 

@@ -41,7 +41,7 @@ func (lsum *LogisticSum) ProcessLastStrain(divider float64) {
 		lsum.first = false
 		lsum.previousDivider = divider
 		lsum.value = lsum.calculateFull()
-	} else if len(lsum.strains) > 0 {
+	} else if len(lsum.strains) > 0 && lsum.previousDivider != 0 {
 		lsum.value += lsum.calculateStrain(lsum.strains[len(lsum.strains)-1])
 	}
 }

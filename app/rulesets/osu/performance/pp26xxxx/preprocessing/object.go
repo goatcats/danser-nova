@@ -10,12 +10,14 @@ import (
 )
 
 const (
-	NormalizedRadius        = 50.0
-	CircleSizeBuffThreshold = 30.0
-	MinDeltaTime            = 25
+	NormalizedRadius   = 50.0
+	NormalizedDiameter = NormalizedRadius * 2
+	MinDeltaTime       = 25
 )
 
 type DifficultyObject struct {
+	OriginalStartTime float64
+
 	// That's stupid but oh well
 	listOfDiffs *[]*DifficultyObject
 	Index       int
@@ -37,15 +39,25 @@ type DifficultyObject struct {
 
 	EndTime float64
 
+	Preempt float64
+
+	JumpDistance float64
+
 	LazyJumpDistance float64
 
 	MinimumJumpDistance float64
 
 	TravelDistance float64
 
+	LazyTravelDistance float64
+
 	Angle float64
 
+	NormalisedVectorAngle float64
+
 	MinimumJumpTime float64
+
+	LazyTravelTime float64
 
 	TravelTime float64
 
@@ -54,22 +66,43 @@ type DifficultyObject struct {
 	GreatWindow float64
 
 	SmallCircleBonus float64
+
+	LastObjectEndDeltaTime float64
+
+	lastLastDifficultyObject *DifficultyObject
+	lastDifficultyObject     *DifficultyObject
 }
 
 func NewDifficultyObject(hitObject, lastLastObject, lastObject objects.IHitObject, d *difficulty.Difficulty, listOfDiffs *[]*DifficultyObject, index int) *DifficultyObject {
+	endTime := hitObject.GetEndTime()
+	if s, ok := hitObject.(*LazySlider); ok {
+		endTime = s.EndTimeLazer
+	}
+
 	obj := &DifficultyObject{
-		listOfDiffs:      listOfDiffs,
-		Index:            index,
-		Diff:             d,
-		BaseObject:       hitObject,
-		LastObject:       lastObject,
-		lastLastObject:   lastLastObject,
-		DeltaTime:        (hitObject.GetStartTime() - lastObject.GetStartTime()) / d.Speed,
-		StartTime:        hitObject.GetStartTime() / d.Speed,
-		EndTime:          hitObject.GetEndTime() / d.Speed,
-		Angle:            math.NaN(),
-		GreatWindow:      2 * d.Hit300U / d.Speed,
-		SmallCircleBonus: max(1.0, 1.0+(30-d.CircleRadiusL)/40),
+		OriginalStartTime:     hitObject.GetStartTime(),
+		listOfDiffs:           listOfDiffs,
+		Index:                 index,
+		Diff:                  d,
+		BaseObject:            hitObject,
+		LastObject:            lastObject,
+		lastLastObject:        lastLastObject,
+		DeltaTime:             (hitObject.GetStartTime() - lastObject.GetStartTime()) / d.Speed,
+		StartTime:             hitObject.GetStartTime() / d.Speed,
+		EndTime:               endTime / d.Speed,
+		Preempt:               d.PreemptU / d.Speed,
+		Angle:                 math.NaN(),
+		NormalisedVectorAngle: math.NaN(),
+		GreatWindow:           2 * d.Hit300U / d.Speed,
+		SmallCircleBonus:      max(1.0, 1.0+(30-d.CircleRadiusL)/70),
+	}
+
+	if index > 1 {
+		obj.lastLastDifficultyObject = (*listOfDiffs)[index-2]
+	}
+
+	if index > 0 {
+		obj.lastDifficultyObject = (*listOfDiffs)[index-1]
 	}
 
 	if _, ok := hitObject.(*objects.Spinner); ok {
@@ -81,6 +114,11 @@ func NewDifficultyObject(hitObject, lastLastObject, lastObject objects.IHitObjec
 	}
 
 	obj.AdjustedDeltaTime = max(obj.DeltaTime, MinDeltaTime)
+	obj.LastObjectEndDeltaTime = obj.AdjustedDeltaTime
+
+	if obj.lastDifficultyObject != nil {
+		obj.LastObjectEndDeltaTime = max(obj.StartTime-obj.lastDifficultyObject.EndTime, MinDeltaTime)
+	}
 
 	obj.setDistances()
 
@@ -93,14 +131,14 @@ func (o *DifficultyObject) GetDoubletapness(osuNextObj *DifficultyObject) float6
 		nextDeltaTime := max(1, osuNextObj.DeltaTime)
 		deltaDifference := math.Abs(nextDeltaTime - currDeltaTime)
 		speedRatio := currDeltaTime / max(currDeltaTime, deltaDifference)
-		windowRatio := math.Pow(min(1, currDeltaTime/o.GreatWindow), 2)
+		windowRatio := math.Pow(min(1, currDeltaTime/o.GreatWindow), 5)
 		return 1 - math.Pow(speedRatio, 1-windowRatio)
 	}
 
 	return 0
 }
 
-func (o *DifficultyObject) OpacityAt(time float64) float64 {
+func (o *DifficultyObject) OpacityAt(time float64, hidden bool) float64 {
 	if time > o.BaseObject.GetStartTime() {
 		return 0
 	}
@@ -108,7 +146,7 @@ func (o *DifficultyObject) OpacityAt(time float64) float64 {
 	fadeInStartTime := o.BaseObject.GetStartTime() - o.Diff.PreemptU
 	fadeInDuration := o.Diff.TimeFadeIn
 
-	if o.Diff.CheckModActive(difficulty.Hidden) {
+	if hidden {
 		fadeOutStartTime := o.BaseObject.GetStartTime() - o.Diff.PreemptU + o.Diff.TimeFadeIn
 		fadeOutDuration := o.Diff.PreemptU * 0.3
 
@@ -144,8 +182,11 @@ func (o *DifficultyObject) Next(forwardsIndex int) *DifficultyObject {
 func (o *DifficultyObject) setDistances() {
 	if currentSlider, ok := o.BaseObject.(*LazySlider); ok {
 		// danser's RepeatCount considers first span, that's why we have to subtract 1 here
-		o.TravelDistance = currentSlider.LazyTravelDistance * math.Pow(1+float64(currentSlider.RepeatCount-1)/2.5, 1.0/2.5)
-		o.TravelTime = max(currentSlider.LazyTravelTime/o.Diff.Speed, MinDeltaTime)
+		o.LazyTravelDistance = currentSlider.LazyTravelDistance
+		o.LazyTravelTime = currentSlider.LazyTravelTime
+
+		o.TravelDistance = o.LazyTravelDistance * max(1, math.Pow(float64(currentSlider.RepeatCount-1), 0.3))
+		o.TravelTime = max(o.LazyTravelTime/o.Diff.Speed, MinDeltaTime)
 	}
 
 	_, ok1 := o.BaseObject.(*objects.Spinner)
@@ -157,14 +198,18 @@ func (o *DifficultyObject) setDistances() {
 
 	scalingFactor := NormalizedRadius / float32(o.Diff.CircleRadiusL)
 
-	lastCursorPosition := getEndCursorPosition(o.LastObject, o.Diff)
+	lastCursorPosition := o.LastObject.GetStackedStartPositionMod(o.Diff)
+	if o.lastDifficultyObject != nil {
+		lastCursorPosition = getEndCursorPosition(o.lastDifficultyObject)
+	}
 
-	o.LazyJumpDistance = float64((o.BaseObject.GetStackedStartPositionMod(o.Diff).Scl(scalingFactor)).Dst(lastCursorPosition.Scl(scalingFactor)))
+	o.JumpDistance = float64((o.LastObject.GetStackedStartPositionMod(o.Diff)).Dst(o.BaseObject.GetStackedStartPositionMod(o.Diff)) * scalingFactor)
+	o.LazyJumpDistance = float64(o.BaseObject.GetStackedStartPositionMod(o.Diff).Dst(lastCursorPosition) * scalingFactor)
 	o.MinimumJumpTime = o.AdjustedDeltaTime
 	o.MinimumJumpDistance = o.LazyJumpDistance
 
-	if lastSlider, ok := o.LastObject.(*LazySlider); ok {
-		lastTravelTime := max(lastSlider.LazyTravelTime/o.Diff.Speed, MinDeltaTime)
+	if lastSlider, ok := o.LastObject.(*LazySlider); ok && o.lastDifficultyObject != nil {
+		lastTravelTime := max(o.lastDifficultyObject.LazyTravelTime/o.Diff.Speed, MinDeltaTime)
 		o.MinimumJumpTime = max(o.AdjustedDeltaTime-lastTravelTime, MinDeltaTime)
 
 		//
@@ -193,27 +238,52 @@ func (o *DifficultyObject) setDistances() {
 		o.MinimumJumpDistance = max(0, min(o.LazyJumpDistance-float64(maximumSliderRadius-assumedSliderRadius), float64(tailJumpDistance-maximumSliderRadius)))
 	}
 
-	if o.lastLastObject != nil {
-		if _, ok := o.lastLastObject.(*objects.Spinner); ok {
-			return
+	if o.lastLastDifficultyObject != nil && !o.lastLastDifficultyObject.IsSpinner {
+		if o.lastDifficultyObject.IsSlider && o.lastDifficultyObject.TravelDistance > 0 {
+			lastCursorPosition = o.lastDifficultyObject.BaseObject.GetStackedStartPositionMod(o.lastDifficultyObject.Diff)
 		}
 
-		lastLastCursorPosition := getEndCursorPosition(o.lastLastObject, o.Diff)
+		lastLastCursorPosition := getEndCursorPosition(o.lastLastDifficultyObject)
 
-		v1 := lastLastCursorPosition.Sub(o.LastObject.GetStackedStartPositionMod(o.Diff))
-		v2 := o.BaseObject.GetStackedStartPositionMod(o.Diff).Sub(lastCursorPosition)
-		dot := v1.Dot(v2)
-		det := v1.X*v2.Y - v1.Y*v2.X
-		o.Angle = math.Abs(math.Atan2(float64(det), float64(dot)))
+		angle := o.calculateAngle(o.BaseObject.GetStackedStartPositionMod(o.Diff), lastCursorPosition, lastLastCursorPosition)
+		sliderAngle := o.calculateSliderAngle(o.lastDifficultyObject, lastLastCursorPosition)
+
+		v := o.BaseObject.GetStackedStartPositionMod(o.Diff).Sub(lastCursorPosition)
+		o.NormalisedVectorAngle = math.Atan2(math.Abs(float64(v.Y)), math.Abs(float64(v.X)))
+
+		o.Angle = min(angle, sliderAngle)
 	}
 }
 
-func getEndCursorPosition(obj objects.IHitObject, d *difficulty.Difficulty) (pos vector.Vector2f) {
-	pos = obj.GetStackedStartPositionMod(d)
+func (o *DifficultyObject) calculateSliderAngle(lastDifficultyObject *DifficultyObject, lastLastCursorPosition vector.Vector2f) float64 {
+	lastCursorPosition := getEndCursorPosition(lastDifficultyObject)
 
-	if s, ok := obj.(*LazySlider); ok {
-		pos = s.LazyEndPosition
+	if prevSlider, ok := lastDifficultyObject.BaseObject.(*LazySlider); ok && lastDifficultyObject.TravelDistance > 0 {
+		if len(prevSlider.ScorePointsLazer) < 2 {
+			lastLastCursorPosition = prevSlider.GetStackedStartPositionMod(lastDifficultyObject.Diff)
+		} else {
+			p := prevSlider.ScorePointsLazer[len(prevSlider.ScorePointsLazer)-2]
+			lastLastCursorPosition = prevSlider.GetStackedPositionAtModLazer(p.Time, lastDifficultyObject.Diff)
+		}
 	}
 
-	return
+	return o.calculateAngle(o.BaseObject.GetStackedStartPositionMod(o.Diff), lastCursorPosition, lastLastCursorPosition)
+}
+
+func (o *DifficultyObject) calculateAngle(currentPosition, lastPosition, lastLastPosition vector.Vector2f) float64 {
+	v1 := lastLastPosition.Sub(lastPosition)
+	v2 := currentPosition.Sub(lastPosition)
+
+	dot := v1.Dot(v2)
+	det := v1.X*v2.Y - v1.Y*v2.X
+
+	return math.Abs(math.Atan2(float64(det), float64(dot)))
+}
+
+func getEndCursorPosition(obj *DifficultyObject) (pos vector.Vector2f) {
+	if s, ok := obj.BaseObject.(*LazySlider); ok {
+		return s.LazyEndPosition
+	}
+
+	return obj.BaseObject.GetStackedStartPositionMod(obj.Diff)
 }

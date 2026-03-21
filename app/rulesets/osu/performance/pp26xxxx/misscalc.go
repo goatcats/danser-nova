@@ -102,9 +102,13 @@ func calculateMaximumComboBasedMissCount(score api.PerfScore, attributes api.Att
 
 	missCount := 0.0
 
+	// If sliders in the map are hard - it's likely for player to drop sliderends
+	// If map has easy sliders - it's more likely for player to sliderbreak
+	likelyMissedSliderendPortion := 0.04 + 0.06*math.Pow(min(attributes.AimTopWeightedSliderFactor, 1), 2)
+
 	// Consider that full combo is maximum combo minus dropped slider tails since they don't contribute to combo but also don't break it
-	// In classic scores we can't know the amount of dropped sliders so we estimate to 10% of all sliders on the map
-	fullComboThreshold := float64(attributes.MaxCombo) - 0.1*float64(attributes.Sliders)
+	// In classic scores we can't know the amount of dropped sliders so we estimate it
+	fullComboThreshold := float64(attributes.MaxCombo) - min(4+likelyMissedSliderendPortion*float64(attributes.Sliders), float64(attributes.Sliders))
 
 	if float64(score.MaxCombo) < fullComboThreshold {
 		missCount = math.Pow(fullComboThreshold/max(1.0, float64(score.MaxCombo)), 2.5)

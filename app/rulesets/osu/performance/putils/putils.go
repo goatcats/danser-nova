@@ -61,3 +61,12 @@ func DegreesToRadians(degrees float64) float64 {
 func ReverseLerp(x, start, end float64) float64 {
 	return mutils.Clamp((x-start)/(end-start), 0, 1)
 }
+
+func Norm(p float64, values ...float64) float64 {
+	var sum float64
+	for _, x := range values {
+		sum += math.Pow(x, p)
+	}
+
+	return math.Pow(sum, 1/p)
+}

@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	PerformanceBaseMultiplier float64 = 1.14
+	PerformanceBaseMultiplier float64 = 1.12
 )
 
 /* ------------------------------------------------------------- */
@@ -120,19 +120,18 @@ func (pp *PPv2) Calculate(attribs api.Attributes, score api.PerfScore, diff *dif
 
 	pp.speedDeviation = pp.calculateSpeedDeviation(pp.attribs)
 
+	readingValue := pp.computeReadingValue()
+	flashlightValue := pp.computeFlashlightValue()
+	cognitionValue := sumCognitionDifficulty(readingValue, flashlightValue)
+
 	results := api.PPv2Results{
-		Aim:        pp.computeAimValue(),
-		Speed:      pp.computeSpeedValue(),
-		Acc:        pp.computeAccuracyValue(),
-		Flashlight: pp.computeFlashlightValue(),
+		Aim:       pp.computeAimValue(),
+		Speed:     pp.computeSpeedValue(),
+		Acc:       pp.computeAccuracyValue(),
+		Cognition: cognitionValue,
 	}
 
-	results.Total = math.Pow(
-		math.Pow(results.Aim, 1.1)+
-			math.Pow(results.Speed, 1.1)+
-			math.Pow(results.Acc, 1.1)+
-			math.Pow(results.Flashlight, 1.1),
-		1.0/1.1) * multiplier
+	results.Total = putils.Norm(1.1, results.Aim, results.Speed, results.Acc, results.Cognition) * multiplier
 
 	return results
 }
@@ -166,7 +165,7 @@ func (pp *PPv2) computeAimValue() float64 {
 	aimValue := skills.DefaultDifficultyToPerformance(aimDifficulty)
 
 	// Longer maps are worth more
-	lengthBonus := 0.95 + 0.4*min(1.0, float64(pp.totalHits)/2000.0)
+	lengthBonus := 0.95 + 0.35*min(1.0, float64(pp.totalHits)/2000.0)
 	if pp.totalHits > 2000 {
 		lengthBonus += math.Log10(float64(pp.totalHits)/2000.0) * 0.5
 	}
@@ -183,7 +182,7 @@ func (pp *PPv2) computeAimValue() float64 {
 	}
 
 	if pp.diff.CheckModActive(difficulty.Traceable) {
-		aimValue *= 1.0 + calculateVisibilityBonusSF(pp.diff, pp.diff.ARReal, pp.attribs.SliderFactor)
+		aimValue *= 1.0 + pp.calculateTraceableBonus(pp.attribs.SliderFactor)
 	}
 
 	aimValue *= pp.score.Accuracy
@@ -196,15 +195,7 @@ func (pp *PPv2) computeSpeedValue() float64 {
 		return 0
 	}
 
-	speedValue := skills.DefaultDifficultyToPerformance(pp.attribs.Speed)
-
-	// Longer maps are worth more
-	lengthBonus := 0.95 + 0.4*min(1.0, float64(pp.totalHits)/2000.0)
-	if pp.totalHits > 2000 {
-		lengthBonus += math.Log10(float64(pp.totalHits)/2000.0) * 0.5
-	}
-
-	speedValue *= lengthBonus
+	speedValue := skills.HarmonicDifficultyToPerformance(pp.attribs.Speed)
 
 	// Penalize misses by assessing # of misses relative to the total # of objects. Default a 3% reduction for any # of misses.
 	if pp.effectiveMissCount > 0 {
@@ -216,23 +207,21 @@ func (pp *PPv2) computeSpeedValue() float64 {
 	}
 
 	if pp.diff.Mods.Active(difficulty.Traceable) {
-		speedValue *= 1.0 + calculateVisibilityBonus(pp.diff, pp.diff.ARReal)
+		speedValue *= 1.0 + pp.calculateTraceableBonus1()
 	}
 
 	speedHighDeviationMultiplier := pp.calculateSpeedHighDeviationNerf(pp.attribs)
 	speedValue *= speedHighDeviationMultiplier
 
-	relevantAccuracy := 0.0
-	if pp.attribs.SpeedNoteCount != 0 {
-		relevantTotalDiff := max(0, float64(pp.totalHits)-pp.attribs.SpeedNoteCount)
-		relevantCountGreat := max(0, float64(pp.score.CountGreat)-relevantTotalDiff)
-		relevantCountOk := max(0, float64(pp.score.CountOk)-max(0, relevantTotalDiff-float64(pp.score.CountGreat)))
-		relevantCountMeh := max(0, float64(pp.score.CountMeh)-max(0, relevantTotalDiff-float64(pp.score.CountGreat)-float64(pp.score.CountOk)))
-		relevantAccuracy = (relevantCountGreat*6.0 + relevantCountOk*2.0 + relevantCountMeh) / (pp.attribs.SpeedNoteCount * 6.0)
-	}
+	// An effective hit window is created based on the speed SR. The higher the speed difficulty, the shorter the hit window.
+	// For example, a speed SR of 4.0 leads to an effective hit window of 20ms, which is OD 10.
+	effectiveHitWindow := 20 * math.Pow(4/pp.attribs.Speed, 0.35)
 
-	// Scale the speed value with accuracy and OD
-	speedValue *= math.Pow((pp.score.Accuracy+relevantAccuracy)/2.0, (14.5-pp.diff.ODReal)/2)
+	// Find the proportion of 300s on speed notes assuming the hit window was the effective hit window.
+	effectiveAccuracy := math.Erf(effectiveHitWindow / (*pp.speedDeviation))
+
+	// Scale speed value by normalized accuracy.
+	speedValue *= math.Pow(effectiveAccuracy, 2)
 
 	return speedValue
 }
@@ -264,9 +253,13 @@ func (pp *PPv2) computeAccuracyValue() float64 {
 	accuracyValue := math.Pow(1.52163, pp.diff.ODReal) * math.Pow(betterAccuracyPercentage, 24) * 2.83
 
 	// Bonus for many hitcircles - it's harder to keep good accuracy up for longer
-	accuracyValue *= min(1.15, math.Pow(float64(amountHitObjectsWithAccuracy)/1000.0, 0.3))
+	if amountHitObjectsWithAccuracy < 1000 {
+		accuracyValue *= math.Pow(float64(amountHitObjectsWithAccuracy)/1000.0, 0.3)
+	} else {
+		accuracyValue *= math.Pow(float64(amountHitObjectsWithAccuracy)/1000.0, 0.1)
+	}
 
-	if pp.diff.Mods.Active(difficulty.Hidden) || pp.diff.Mods.Active(difficulty.Traceable) {
+	if pp.diff.Mods.Active(difficulty.Traceable) {
 		accuracyValue *= 1 + 0.08*putils.ReverseLerp(pp.diff.ARReal, 11.5, 10)
 	}
 
@@ -297,6 +290,19 @@ func (pp *PPv2) computeFlashlightValue() float64 {
 	return flashlightValue
 }
 
+func (pp *PPv2) computeReadingValue() float64 {
+	readingValue := skills.HarmonicDifficultyToPerformance(pp.attribs.Reading)
+
+	if pp.effectiveMissCount > 0 {
+		readingValue *= pp.calculateMissPenalty(pp.effectiveMissCount+pp.aimEstimatedSliderBreaks, pp.attribs.ReadingDifficultNoteCount)
+	}
+
+	// Scale the reading value with accuracy _harshly_.
+	readingValue *= math.Pow(pp.score.Accuracy, 3)
+
+	return readingValue
+}
+
 func (pp *PPv2) calculateComboBasedEstimatedMissCount(attributes api.Attributes) float64 {
 	if attributes.Sliders <= 0 {
 		return float64(pp.score.CountMiss)
@@ -305,9 +311,13 @@ func (pp *PPv2) calculateComboBasedEstimatedMissCount(attributes api.Attributes)
 	missCount := float64(pp.score.CountMiss)
 
 	if pp.usingClassicSliderAccuracy {
+		// If sliders in the map are hard - it's likely for player to drop sliderends
+		// If map has easy sliders - it's more likely for player to sliderbreak
+		likelyMissedSliderendPortion := 0.04 + 0.06*math.Pow(min(pp.attribs.AimTopWeightedSliderFactor, 1), 2)
+
 		// Consider that full combo is maximum combo minus dropped slider tails since they don't contribute to combo but also don't break it
-		// In classic scores we can't know the amount of dropped sliders so we estimate to 10% of all sliders on the map
-		fullComboThreshold := float64(attributes.MaxCombo) - 0.1*float64(attributes.Sliders)
+		// In classic scores we can't know the amount of dropped sliders so we estimate it
+		fullComboThreshold := float64(pp.attribs.MaxCombo) - min(4+likelyMissedSliderendPortion*float64(pp.attribs.Sliders), float64(pp.attribs.Sliders))
 
 		if float64(pp.score.MaxCombo) < fullComboThreshold {
 			missCount = fullComboThreshold / max(1.0, float64(pp.score.MaxCombo))
@@ -426,7 +436,7 @@ func (pp *PPv2) calculateSpeedHighDeviationNerf(attributes api.Attributes) float
 	if pp.speedDeviation == nil {
 		return 0
 	}
-	speedValue := skills.DefaultDifficultyToPerformance(attributes.Speed)
+	speedValue := skills.HarmonicDifficultyToPerformance(attributes.Speed)
 
 	// Decides a point where the PP value achieved compared to the speed deviation is assumed to be tapped improperly. Any PP above this point is considered "excess" speed difficulty.
 	// This is used to cause PP above the cutoff to scale logarithmically towards the original speed value thus nerfing the value.
@@ -444,6 +454,30 @@ func (pp *PPv2) calculateSpeedHighDeviationNerf(attributes api.Attributes) float
 	adjustedSpeedValue = mutils.Lerp(adjustedSpeedValue, speedValue, lerp)
 
 	return adjustedSpeedValue / speedValue
+}
+
+func (pp *PPv2) calculateTraceableBonus1() float64 {
+	return pp.calculateTraceableBonus(1)
+}
+
+func (pp *PPv2) calculateTraceableBonus(sliderFactor float64) float64 {
+	// Start from normal curve, rewarding lower AR up to AR7
+	traceableBonus := 0.025 * (12.0 - max(pp.diff.ARReal, 7))
+
+	// We want to reward slider aim on low AR less
+	sliderVisibilityFactor := math.Pow(sliderFactor, 3)
+
+	// For AR up to 0 - reduce reward for very low ARs when object is visible
+	if pp.diff.ARReal < 7 {
+		traceableBonus += 0.02 * (7.0 - max(pp.diff.ARReal, 0)) * sliderVisibilityFactor
+	}
+
+	// Starting from AR0 - cap values so they won't grow to infinity
+	if pp.diff.ARReal < 0 {
+		traceableBonus += 0.01 * (1 - math.Pow(1.5, pp.diff.ARReal)) * sliderVisibilityFactor
+	}
+
+	return traceableBonus
 }
 
 func (pp *PPv2) calculateMissPenalty(missCount, difficultStrainCount float64) float64 {

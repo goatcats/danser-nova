@@ -3,17 +3,14 @@ package evaluators
 import (
 	"math"
 
-	"github.com/wieku/danser-go/app/beatmap/difficulty"
 	"github.com/wieku/danser-go/app/rulesets/osu/performance/pp26xxxx/preprocessing"
 	"github.com/wieku/danser-go/app/rulesets/osu/performance/putils"
 	"github.com/wieku/danser-go/framework/math/mutils"
 )
 
 const (
-	speedSingleSpacingThreshold float64 = preprocessing.NormalizedRadius * 2 * 1.25
-	speedMinSpeedBonus          float64 = 200 // 200 BPM 1/4th
-	speedBalancingFactor        float64 = 40
-	speedDistanceMultiplier     float64 = 0.8
+	speedMinSpeedBonus   float64 = 200 // 200 BPM 1/4th
+	speedBalancingFactor float64 = 40
 )
 
 func EvaluateSpeed(current *preprocessing.DifficultyObject) float64 {
@@ -22,7 +19,6 @@ func EvaluateSpeed(current *preprocessing.DifficultyObject) float64 {
 	}
 
 	osuCurrObj := current
-	osuPrevObj := current.Previous(0)
 
 	strainTime := osuCurrObj.AdjustedDeltaTime
 	doubletapness := 1.0 - osuCurrObj.GetDoubletapness(current.Next(0))
@@ -39,27 +35,15 @@ func EvaluateSpeed(current *preprocessing.DifficultyObject) float64 {
 		speedBonus = 0.75 * math.Pow((putils.BPMToMillisecondsD(speedMinSpeedBonus)-strainTime)/speedBalancingFactor, 2.0)
 	}
 
-	var travelDistance float64
-	if osuPrevObj != nil {
-		travelDistance = osuPrevObj.TravelDistance
-	}
-
-	// Cap distance at single_spacing_threshold
-	distance := min(speedSingleSpacingThreshold, travelDistance+osuCurrObj.MinimumJumpDistance)
-
-	// Max distance bonus is 1 * `distance_multiplier` at single_spacing_threshold
-	distanceBonus := math.Pow(distance/speedSingleSpacingThreshold, 3.95) * speedDistanceMultiplier
-
-	// Apply reduced small circle bonus because flow aim difficulty on small circles doesn't scale as hard as jumps
-	distanceBonus *= math.Sqrt(osuCurrObj.SmallCircleBonus)
-
-	if current.Diff.CheckModActive(difficulty.Relax2) {
-		distanceBonus = 0
-	}
-
 	// Base difficulty with all bonuses
-	difficulty := (1.0 + speedBonus + distanceBonus) * 1000 / strainTime
+	difficulty := (1.0 + speedBonus) * 1000 / strainTime
+
+	difficulty *= speedHighBpmBonus(osuCurrObj.AdjustedDeltaTime)
 
 	// Apply penalty if there's doubletappable doubles
 	return difficulty * doubletapness
+}
+
+func speedHighBpmBonus(ms float64) float64 {
+	return 1 / (1 - math.Pow(0.3, ms/1000))
 }
