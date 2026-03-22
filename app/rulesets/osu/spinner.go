@@ -224,7 +224,7 @@ func (spinner *Spinner) processStable(player *difficultyPlayer, time int64) {
 
 			if state.scoringRotationCount > state.requirement+3 && (state.scoringRotationCount-(state.requirement+3))%2 == 0 {
 				if len(spinner.players) == 1 {
-					spinner.hitSpinner.Bonus(1000)
+					spinner.hitSpinner.Bonus(1000, time)
 				}
 
 				spinner.ruleSet.SendResult(player.cursor, createJudgementResult(SpinnerBonus, SpinnerBonus, Hold, time, spinnerPosition, spinner))
@@ -322,14 +322,14 @@ func (spinner *Spinner) processLazer(player *difficultyPlayer, time int64) {
 					spinner.ruleSet.SendResult(player.cursor, createJudgementResult(SpinnerPoints, SpinnerPoints, Hold, time, spinnerPosition, spinner))
 				} else {
 					if len(spinner.players) == 1 {
-						spinner.hitSpinner.Bonus(int(SpinnerBonus.ScoreValueMod(player.diff.Mods)))
+						spinner.hitSpinner.Bonus(int(SpinnerBonus.ScoreValueMod(player.diff.Mods)), time)
 					}
 
 					spinner.ruleSet.SendResult(player.cursor, createJudgementResult(SpinnerBonus, SpinnerBonus, Hold, time, spinnerPosition, spinner))
 				}
 			} else {
 				if len(spinner.players) == 1 {
-					spinner.hitSpinner.Bonus(0)
+					spinner.hitSpinner.Bonus(0, time)
 				}
 			}
 		}
