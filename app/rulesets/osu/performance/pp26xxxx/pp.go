@@ -481,7 +481,7 @@ func (pp *PPv2) calculateTraceableBonus(sliderFactor float64) float64 {
 }
 
 func (pp *PPv2) calculateMissPenalty(missCount, difficultStrainCount float64) float64 {
-	return 0.96 / ((missCount / (4 * math.Pow(math.Log(difficultStrainCount), 0.94))) + 1)
+	return 0.93 / ((missCount / (4 * math.Log(difficultStrainCount))) + 1)
 }
 
 func (pp *PPv2) getComboScalingFactor() float64 {
