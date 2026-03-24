@@ -13,7 +13,7 @@ import (
 
 const (
 	aimSkillMultiplierSnap    = 71
-	aimSkillMultiplierAgility = 2.0
+	aimSkillMultiplierAgility = 2.5
 	aimSkillMultiplierFlow    = 245.0
 	aimSkillMultiplierTotal   = 1.1
 	aimMeanExponent           = 1.2

@@ -38,5 +38,5 @@ func EvaluateAgility(current *preprocessing.DifficultyObject) float64 {
 }
 
 func aimHighBpmBonus(ms float64) float64 {
-	return 1 / (1 - math.Pow(0.3, math.Pow(ms/1000, 0.9)))
+	return 1 / (1 - math.Pow(0.15, ms/1000))
 }
