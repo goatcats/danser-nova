@@ -85,6 +85,10 @@ func (scheduler *GenericScheduler) Init(objs []objects.IHitObject, diff *difficu
 	// Spread overlapping circles timing-wise
 	for i := 0; i < len(scheduler.queue)-1; i++ {
 		current := scheduler.queue[i]
+		dtP := 0.0
+		if c, cOk := current.(*objects.Circle); cOk && c.DoubleClick {
+			dtP = 1
+		}
 
 		for j := i + 1; j < len(scheduler.queue); j++ {
 			o := scheduler.queue[j]
@@ -94,7 +98,7 @@ func (scheduler *GenericScheduler) Init(objs []objects.IHitObject, diff *difficu
 			}
 
 			if c, cOk := o.(*objects.Circle); cOk && (!c.SliderPoint || c.SliderPointStart) {
-				scheduler.queue[j] = objects.DummyCircle(c.GetStackedStartPositionMod(diff), c.GetStartTime()+1)
+				scheduler.queue[j] = objects.DummyCircle(c.GetStackedStartPositionMod(diff), c.GetStartTime()+float64(j-i)+dtP)
 			}
 		}
 	}
