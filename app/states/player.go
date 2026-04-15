@@ -215,8 +215,8 @@ func NewPlayer(beatMap *beatmap.BeatMap) *Player {
 			removed = true
 		}
 
-		for i := 0; i < len(beatMap.HitObjects); i++ {
-			beatMap.HitObjects[i].SetID(int64(i))
+		for i, hO := range beatMap.HitObjects {
+			hO.SetID(int64(i))
 		}
 
 		for i := 0; i < len(beatMap.Pauses); i++ {

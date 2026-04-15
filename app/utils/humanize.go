@@ -1,8 +1,9 @@
 package utils
 
 import (
-	"golang.org/x/exp/constraints"
 	"strconv"
+
+	"golang.org/x/exp/constraints"
 )
 
 func Humanize[T constraints.Integer](number T) string {

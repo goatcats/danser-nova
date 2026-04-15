@@ -232,7 +232,7 @@ func startVideo(fps, _w, _h int) {
 			rgbToYuvConverter = effects.NewRGBYUV(w, h, parsedFormat != pixconv.I444 && parsedFormat != pixconv.I422)
 		}
 
-		for i := 0; i < MaxVideoBuffers; i++ {
+		for range MaxVideoBuffers {
 			freePBOPool <- createPBO(parsedFormat)
 		}
 
@@ -255,10 +255,9 @@ func startVideo(fps, _w, _h int) {
 		for sc.Scan() {
 			line := sc.Text()
 
-			cutIndex := strings.Index(line, "] ") //searching for encoder error
+			_, cutLine, ok := strings.Cut(line, "] ") //searching for encoder error
 
-			if cutIndex > -1 {
-				cutLine := line[cutIndex+2:]
+			if ok {
 				lineLower := strings.ToLower(cutLine)
 
 				if strings.Contains(lineLower, "error setting") ||

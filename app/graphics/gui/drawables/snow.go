@@ -85,7 +85,7 @@ func (vis *Snow) Update(time float64) {
 	triangles := vis.manager.GetProcessedSprites()
 	existingSnow := len(triangles)
 
-	for i := 0; i < len(triangles); i++ {
+	for i := range triangles {
 		t := triangles[i].(*Snowflake)
 		t.Update(time)
 
@@ -105,7 +105,7 @@ func (vis *Snow) Update(time float64) {
 	toAdd := maxTriangles*5 - existingSnow
 
 	if toAdd > 0 {
-		for i := 0; i < toAdd; i++ {
+		for range toAdd {
 			vis.AddSnowflake(vis.firstUpdate)
 		}
 

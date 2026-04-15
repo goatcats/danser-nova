@@ -369,7 +369,7 @@ func (set *OsuRuleSet) printEndTable() {
 
 	table.Render()
 
-	for _, s := range strings.Split(tableString.String(), "\n") {
+	for s := range strings.SplitSeq(tableString.String(), "\n") {
 		log.Println(s)
 	}
 }

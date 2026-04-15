@@ -174,7 +174,7 @@ func vectorAngleRepetition(current, previous *preprocessing.DifficultyObject) fl
 
 	constantAngleCount := 0.0
 
-	for index := 0; index < noteLimit; index++ {
+	for index := range noteLimit {
 		loopObj := current.Previous(index)
 
 		if loopObj == nil {

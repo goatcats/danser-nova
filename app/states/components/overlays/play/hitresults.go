@@ -1,6 +1,9 @@
 package play
 
 import (
+	"math"
+	"math/rand"
+
 	"github.com/wieku/danser-go/app/beatmap/difficulty"
 	"github.com/wieku/danser-go/app/beatmap/objects"
 	"github.com/wieku/danser-go/app/rulesets/osu"
@@ -12,8 +15,6 @@ import (
 	"github.com/wieku/danser-go/framework/math/animation/easing"
 	color2 "github.com/wieku/danser-go/framework/math/color"
 	"github.com/wieku/danser-go/framework/math/vector"
-	"math"
-	"math/rand"
 )
 
 type HitResults struct {
@@ -81,7 +82,7 @@ func (results *HitResults) AddResult(time int64, result osu.HitResult, position 
 		if particleTex != nil {
 			particles = true
 
-			for i := 0; i < 150; i++ {
+			for range 150 {
 				fadeOut := 500 + 700*rand.Float64()
 				direction := vector.NewVec2dRad(rand.Float64()*2*math.Pi, rand.Float64()*35)
 

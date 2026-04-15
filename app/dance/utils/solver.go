@@ -10,7 +10,7 @@ import (
 
 func Solve2B(queue []objects.IHitObject) []objects.IHitObject {
 	// Resolving 2B conflicts
-	for i := 0; i < len(queue); i++ {
+	for i := range queue {
 		s, ok := queue[i].(*objects.Slider)
 		if !ok {
 			continue

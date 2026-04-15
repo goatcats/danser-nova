@@ -3,10 +3,12 @@ package launcher
 import (
 	"cmp"
 	"fmt"
+	"iter"
 	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -243,7 +245,7 @@ func (editor *settingsEditor) buildSearchCache(path string, u reflect.Value, sea
 	skipMap := make(map[string]uint8)
 	consumed := make(map[string]uint8)
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		field := typ.Field(i)
 		dF := def.Field(i)
 
@@ -261,7 +263,7 @@ func (editor *settingsEditor) buildSearchCache(path string, u reflect.Value, sea
 
 		match := omitSearch || strings.Contains(strings.ToLower(label), search)
 
-		if field.Type().Kind() == reflect.Ptr && (field.CanInterface() || def.Field(i).Anonymous) && !field.IsNil() && !field.Type().AssignableTo(reflect.TypeOf(&settings.HSV{})) {
+		if field.Type().Kind() == reflect.Pointer && (field.CanInterface() || def.Field(i).Anonymous) && !field.IsNil() && !field.Type().AssignableTo(reflect.TypeFor[*settings.HSV]()) {
 			sub := editor.buildSearchCache(sPath, field, search, match)
 			match = match || sub
 		} else if field.Type().Kind() == reflect.Slice && field.CanInterface() {
@@ -280,7 +282,7 @@ func (editor *settingsEditor) buildSearchCache(path string, u reflect.Value, sea
 	return found
 }
 
-func (editor *settingsEditor) buildNavigationFor(u interface{}) {
+func (editor *settingsEditor) buildNavigationFor(u any) {
 	typ := reflect.ValueOf(u).Elem()
 	def := reflect.TypeOf(u).Elem()
 
@@ -294,7 +296,7 @@ func (editor *settingsEditor) buildNavigationFor(u interface{}) {
 	sc1 := imgui.ScrollY()
 	sc2 := sc1 + cAvail
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		label := editor.getLabel(def.Field(i))
 
 		if editor.searchCache["Main."+label] > 0 && (typ.Field(i).CanInterface() && !typ.Field(i).IsNil()) {
@@ -366,7 +368,7 @@ func (editor *settingsEditor) drawSettings() {
 			continue
 		}
 
-		if field.CanInterface() && field.Type().Kind() == reflect.Ptr && !field.IsNil() {
+		if field.CanInterface() && field.Type().Kind() == reflect.Pointer && !field.IsNil() {
 			if j > 0 {
 				imgui.Dummy(vec2(1, 2*padY))
 			}
@@ -645,7 +647,7 @@ func (editor *settingsEditor) traverseChildren(jsonPath, lPath string, u reflect
 	typ := u.Elem()
 	def := u.Type().Elem()
 
-	if u.Type().AssignableTo(reflect.TypeOf(&settings.HSV{})) { // special case, if it's an array of colors we want to see color picker instead of Hue, Saturation and Value sliders
+	if u.Type().AssignableTo(reflect.TypeFor[*settings.HSV]()) { // special case, if it's an array of colors we want to see color picker instead of Hue, Saturation and Value sliders
 		editor.buildColor(jsonPath, u, d, false)
 		return
 	}
@@ -659,7 +661,7 @@ func (editor *settingsEditor) traverseChildren(jsonPath, lPath string, u reflect
 	wasRendered := false
 	wasSection := false
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		field := typ.Field(i)
 		dF := def.Field(i)
 
@@ -696,7 +698,7 @@ func (editor *settingsEditor) traverseChildren(jsonPath, lPath string, u reflect
 		wasRendered = true
 
 		switch field.Type().Kind() {
-		case reflect.String, reflect.Float64, reflect.Int64, reflect.Int, reflect.Int32, reflect.Bool, reflect.Slice, reflect.Ptr:
+		case reflect.String, reflect.Float64, reflect.Int64, reflect.Int, reflect.Int32, reflect.Bool, reflect.Slice, reflect.Pointer:
 			if wasSection {
 				imgui.Dummy(vec2(0, padY/2))
 			}
@@ -738,8 +740,8 @@ func (editor *settingsEditor) traverseChildren(jsonPath, lPath string, u reflect
 
 				editor.buildArray(jsonPath1, sPath2, label, field, dF)
 				isSection = true
-			case reflect.Ptr:
-				if field.Type().AssignableTo(reflect.TypeOf(&settings.HSV{})) {
+			case reflect.Pointer:
+				if field.Type().AssignableTo(reflect.TypeFor[*settings.HSV]()) {
 					editor.buildColor(jsonPath1, field, dF, true)
 				} else if !field.IsNil() {
 					if dF.Anonymous {
@@ -803,7 +805,7 @@ func (editor *settingsEditor) shouldBeHidden(consumed map[string]uint8, hidden m
 
 			found := false
 
-			for _, toCheck := range strings.Split(s1[1], ",") {
+			for toCheck := range strings.SplitSeq(s1[1], ",") {
 				if toCheck[:1] == "!" {
 					found = cF != toCheck[1:]
 
@@ -915,7 +917,7 @@ func (editor *settingsEditor) buildVector(jsonPath1, jsonPath2 string, d reflect
 			hasCustom := false
 			normalFound := false
 
-			for _, s := range strings.Split(cSpec, ",") {
+			for s := range strings.SplitSeq(cSpec, ",") {
 				if s == "custom" {
 					hasCustom = true
 					continue
@@ -1112,17 +1114,17 @@ func (editor *settingsEditor) buildString(jsonPath string, f reflect.Value, d re
 			var values []string
 			var labels []string
 
-			var options []string
+			var options iter.Seq[string]
 
 			if okCS {
-				options = reflect.ValueOf(settings.DefaultsFactory).MethodByName(cFunc).Call(nil)[0].Interface().([]string)
+				options = slices.Values(reflect.ValueOf(settings.DefaultsFactory).MethodByName(cFunc).Call(nil)[0].Interface().([]string))
 			} else {
-				options = strings.Split(cSpec, ",")
+				options = strings.SplitSeq(cSpec, ",")
 			}
 
 			lb := base
 
-			for _, s := range options {
+			for s := range options {
 				splt := strings.Split(s, "|")
 
 				optionLabel := splt[0]
@@ -1284,7 +1286,7 @@ func (editor *settingsEditor) buildInt(jsonPath string, f reflect.Value, d refle
 
 			hasCustom := false
 
-			for _, s := range strings.Split(cSpec, ",") {
+			for s := range strings.SplitSeq(cSpec, ",") {
 				if s == "custom" {
 					hasCustom = true
 					continue

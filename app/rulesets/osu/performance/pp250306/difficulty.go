@@ -199,7 +199,7 @@ func (diffCalc *DifficultyCalculator) CalculateStrainPeaks(bMap *beatmap.BeatMap
 
 	peaks.Total = make([]float64, len(peaks.Aim))
 
-	for i := 0; i < len(peaks.Aim); i++ {
+	for i := range peaks.Aim {
 		stars := diffCalc.getStarsFromRawValues(peaks.Aim[i], peaks.Aim[i], peaks.Speed[i], peaks.Flashlight[i], diff, api.Attributes{})
 		peaks.Total[i] = stars.Total
 	}

@@ -152,7 +152,7 @@ func NewSlider(data []string) *Slider {
 
 		n := min(len(subData), len(slider.samples))
 
-		for i := 0; i < n; i++ {
+		for i := range n {
 			sample, _ := strconv.Atoi(subData[i])
 			slider.samples[i] = sample
 		}
@@ -163,7 +163,7 @@ func NewSlider(data []string) *Slider {
 
 		n := min(len(subData), len(slider.sampleSets))
 
-		for i := 0; i < n; i++ {
+		for i := range n {
 			extras := strings.Split(subData[i], ":")
 
 			sampleSet, _ := strconv.Atoi(extras[0])
@@ -463,7 +463,7 @@ func (slider *Slider) calculateFollowPointsStable(beatmapVersion int) {
 	scoringDistance := 0.0
 
 	// Stable-like score point processing, ugly AF.
-	for i := 0; i < slider.RepeatCount; i++ {
+	for i := range slider.RepeatCount {
 		distanceToEnd := float64(slider.multiCurve.GetLength())
 		skipTick := nanTimingPoint // NaN SV acts like 1.0x SV, but doesn't spawn slider ticks
 
@@ -909,7 +909,7 @@ func (slider *Slider) InitSlide(time float64) {
 
 	endValue := 1.1 - (fadeTime/fadeBase)*0.1
 
-	for i := 0; i < len(slider.ScorePoints)-1; i++ {
+	for i := range len(slider.ScorePoints) - 1 {
 		p := slider.ScorePoints[i]
 		endTime := p.Time + fadeTime
 

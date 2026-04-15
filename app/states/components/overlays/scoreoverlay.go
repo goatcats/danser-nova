@@ -1098,7 +1098,7 @@ func (overlay *ScoreOverlay) initArrows() {
 
 	addTransforms := func(start float64, times int) {
 		for _, arrow := range arrows {
-			for i := 0; i < times; i++ {
+			for i := range times {
 				time := start + float64(i)*blinkTime
 				arrow.AddTransform(animation.NewSingleTransform(animation.Fade, easing.Linear, time, time, 1, 1))
 				arrow.AddTransform(animation.NewSingleTransform(animation.Fade, easing.Linear, time+blinkTime/2, time+blinkTime/2, 0, 0))

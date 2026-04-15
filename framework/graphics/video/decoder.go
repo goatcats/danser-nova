@@ -132,7 +132,7 @@ func (dec *VideoDecoder) StartFFmpeg(millis int64) {
 	dec.decodingQueue = make(chan Frame, BufferSize)
 	dec.readyQueue = make(chan Frame, BufferSize)
 
-	for i := 0; i < BufferSize; i++ {
+	for range BufferSize {
 		dec.decodingQueue <- make([]byte, dec.Metadata.Width*dec.Metadata.Height*3)
 	}
 

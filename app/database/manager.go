@@ -128,15 +128,15 @@ func Init() error {
 	if currentSchemaPreVersion != databaseVersion {
 		log.Println("DatabaseManager: Database schema is too old! Updating...")
 
-		statement := ""
+		var statement strings.Builder
 
 		for _, m := range migrations {
 			if currentPreVersion < m.Date() {
-				statement += m.GetMigrationStmts()
+				statement.WriteString(m.GetMigrationStmts())
 			}
 		}
 
-		_, err = dbFile.Exec(statement)
+		_, err = dbFile.Exec(statement.String())
 		if err != nil {
 			panic(err)
 		}

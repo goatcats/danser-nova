@@ -43,19 +43,19 @@ func (scheduler *GenericScheduler) Init(objs []objects.IHitObject, diff *difficu
 	}
 
 	// Slider dance / random slider dance resolving
-	for i := 0; i < len(scheduler.queue); i++ {
+	for i := range len(scheduler.queue) {
 		scheduler.queue = utils.PreprocessQueue(i, scheduler.queue, (config.SliderDance && !config.RandomSliderDance) || (config.RandomSliderDance && rand.Intn(2) == 0))
 	}
 
 	// Convert spinners to pseudo spinners that have beginning and ending angles, simplifies mover codes as well
-	for i := 0; i < len(scheduler.queue); i++ {
+	for i := range len(scheduler.queue) {
 		if s, ok := scheduler.queue[i].(*objects.Spinner); ok {
 			scheduler.queue[i] = spinners.NewSpinner(s, diff, spinnerMoverCtor, scheduler.index)
 		}
 	}
 
 	// Convert two overlapping circles (slider starts too if slider danced) to one double-tap circle
-	for i := 0; i < len(scheduler.queue)-1; i++ {
+	for i := range len(scheduler.queue) - 1 {
 		current, pOk := scheduler.queue[i].(*objects.Circle)
 		next, cOk := scheduler.queue[i+1].(*objects.Circle)
 
@@ -83,7 +83,7 @@ func (scheduler *GenericScheduler) Init(objs []objects.IHitObject, diff *difficu
 	}
 
 	// Spread overlapping circles timing-wise
-	for i := 0; i < len(scheduler.queue)-1; i++ {
+	for i := range len(scheduler.queue) - 1 {
 		current := scheduler.queue[i]
 		dtP := 0.0
 		if c, cOk := current.(*objects.Circle); cOk && c.DoubleClick {

@@ -2,6 +2,7 @@ package difficulty
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"reflect"
 	"slices"
@@ -595,10 +596,7 @@ func (diff *Difficulty) SetARCustom(ar float64) {
 
 func (diff *Difficulty) Clone() *Difficulty {
 	diff2 := *diff
-	diff2.modSettings = make(map[reflect.Type]any)
-	for k, v := range diff.modSettings {
-		diff2.modSettings[k] = v
-	}
+	diff2.modSettings = maps.Clone(diff.modSettings)
 
 	return &diff2
 }

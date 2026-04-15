@@ -224,7 +224,7 @@ func (mods Modifier) String() (s string) {
 		mods &= ^SuddenDeath
 	}
 
-	for i := 0; i < len(modsString); i++ {
+	for i := range len(modsString) {
 		activated := mods&1 == 1
 		if activated {
 			s += modsString[i]
@@ -253,7 +253,7 @@ func (mods Modifier) StringFull() (s []string) {
 }
 
 func (mods Modifier) StringFull2() (s []string) {
-	for i := 0; i < len(modsString); i++ {
+	for i := range len(modsString) {
 		activated := mods&1 == 1
 		if activated {
 			s = append(s, modsStringFull[i])
@@ -289,7 +289,7 @@ func (mods Modifier) ConvertToModInfoList() (mi []rplpa.ModInfo) {
 		mods &= ^SuddenDeath
 	}
 
-	for i := 0; i < len(modsString); i++ {
+	for i := range len(modsString) {
 		if mods&1 == 1 {
 			mi = append(mi, rplpa.ModInfo{
 				Acronym:  modsString[i],

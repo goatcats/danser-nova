@@ -1,6 +1,8 @@
 package dance
 
 import (
+	"strings"
+
 	"github.com/wieku/danser-go/app/beatmap"
 	"github.com/wieku/danser-go/app/beatmap/objects"
 	"github.com/wieku/danser-go/app/dance/movers"
@@ -9,7 +11,6 @@ import (
 	"github.com/wieku/danser-go/app/dance/utils"
 	"github.com/wieku/danser-go/app/graphics"
 	"github.com/wieku/danser-go/app/settings"
-	"strings"
 )
 
 type Controller interface {
@@ -64,7 +65,7 @@ func (controller *GenericController) InitCursors() {
 	queue := controller.bMap.GetObjectsCopy()
 
 	// Convert retarded (0 length / 0ms) sliders to pseudo-circles
-	for i := 0; i < len(queue); i++ {
+	for i := range queue {
 		if s, ok := queue[i].(*objects.Slider); ok && s.IsRetarded() {
 			queue = utils.PreprocessQueue(i, queue, true)
 		}
@@ -73,7 +74,7 @@ func (controller *GenericController) InitCursors() {
 	// Convert sliders to pseudo-circles for tag cursors
 	if !settings.CursorDance.ComboTag && !settings.CursorDance.Battle &&
 		settings.CursorDance.TAGSliderDance && settings.TAG > 1 {
-		for i := 0; i < len(queue); i++ {
+		for i := range queue {
 			queue = utils.PreprocessQueue(i, queue, true)
 		}
 	}

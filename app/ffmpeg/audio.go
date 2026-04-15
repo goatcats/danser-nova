@@ -104,7 +104,7 @@ func startAudio(audioFPS float64) {
 
 	audioPool = make(chan []byte, MaxAudioBuffers)
 
-	for i := 0; i < MaxAudioBuffers; i++ {
+	for range MaxAudioBuffers {
 		audioPool <- make([]byte, audioBufSize)
 	}
 

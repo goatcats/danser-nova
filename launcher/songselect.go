@@ -285,14 +285,7 @@ func (m *songSelectPopup) drawSongSelect() {
 				continue
 			}
 
-			isPreviewed := false
-
-			for _, bMap := range b.bMaps {
-				if bMap == m.prevMap {
-					isPreviewed = true
-					break
-				}
-			}
+			isPreviewed := slices.Contains(b.bMaps, m.prevMap)
 
 			c1 := imgui.CursorPos().Y
 
@@ -679,7 +672,8 @@ func compareStrings(l, r string) int {
 	rRa := []rune(r)
 	lenM := min(len(lRa), len(rRa))
 
-	for i := 0; i < lenM; i++ {
+	for i := range lenM {
+		cmp.Compare(unicode.ToLower(lRa[i]), unicode.ToLower(rRa[i]))
 		cL := unicode.ToLower(lRa[i])
 		cR := unicode.ToLower(rRa[i])
 		if cL < cR {
