@@ -97,6 +97,7 @@ type songSelectPopup struct {
 	volume        *animation.Glider
 	stopTime      float64
 	thumbTex      *texture.TextureSingle
+	texRef        *imgui.TextureRef
 	lastThumbPath string
 	drawTex       bool
 	lastScrollY   float32
@@ -462,12 +463,15 @@ func (m *songSelectPopup) showMapTooltip(bMap *beatmap.BeatMap) {
 	if m.lastThumbPath != thumbPath {
 		if m.thumbTex != nil {
 			m.thumbTex.Dispose()
+			m.texRef.Destroy()
 			m.thumbTex = nil
 		}
 
 		pX, err := texture.NewPixmapFileString(thumbPath)
 		if err == nil {
 			m.thumbTex = texture.LoadTextureSingle(pX.RGBA(), 4)
+
+			m.texRef = imgui.NewTextureRefTextureID(imgui.TextureID(m.thumbTex.GetID()))
 
 			pX.Dispose()
 		}
@@ -490,10 +494,7 @@ func (m *songSelectPopup) showMapTooltip(bMap *beatmap.BeatMap) {
 			uvBR.Y = 1 - uvTL.X
 		}
 
-		texRef := imgui.NewTextureRefTextureID(imgui.TextureID(m.thumbTex.GetID()))
-		defer texRef.Destroy()
-
-		imgui.ImageWithBgV(*texRef, vec2(200*tgAsp, 200), uvTL, uvBR, imgui.Vec4{X: 1, Y: 1, Z: 1, W: 0.3}, imgui.Vec4{})
+		imgui.ImageWithBgV(*m.texRef, vec2(200*tgAsp, 200), uvTL, uvBR, imgui.Vec4{}, imgui.Vec4{X: 1, Y: 1, Z: 1, W: 0.3})
 	}
 
 	imgui.SetCursorPos(cPos)
