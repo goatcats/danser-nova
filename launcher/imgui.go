@@ -2,9 +2,14 @@ package launcher
 
 /*
 #include <stdlib.h>
+#include <string.h>
 */
 import "C"
 import (
+	"log"
+	"runtime"
+	"unsafe"
+
 	"github.com/AllenDang/cimgui-go/imgui"
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/go-gl/gl/v3.3-core/gl"
@@ -21,24 +26,16 @@ import (
 	"github.com/wieku/danser-go/framework/math/math32"
 	"github.com/wieku/danser-go/framework/platform/gcontext"
 	"github.com/wieku/danser-go/framework/qpc"
-
-	"log"
-	"runtime"
-	"unsafe"
 )
 
 var context *imgui.Context
 var ImIO *imgui.IO
-var tex *texture.TextureSingle
 var rShader *shader.RShader
 var vao *buffer.VertexArrayObject
 
 var ibo *buffer.IndexBufferObject
-var Font16 *imgui.Font
-var Font20 *imgui.Font
-var Font24 *imgui.Font
-var Font32 *imgui.Font
-var Font48 *imgui.Font
+
+var Font *imgui.Font
 var FontAw *imgui.Font
 
 type sCache struct {
@@ -91,6 +88,8 @@ func SetupImgui() {
 
 	ImIO.SetIniFilename("")
 
+	ImIO.SetBackendFlags(imgui.BackendFlagsRendererHasTextures)
+
 	//region texture
 
 	quicksandBytes, err := assets.GetBytes("assets/fonts/Quicksand-Bold.ttf")
@@ -98,68 +97,26 @@ func SetupImgui() {
 		panic(err)
 	}
 
-	quicksandPtr := unsafe.Pointer(&quicksandBytes[0])
-
-	//TODO: switch from multiple fonts to own custom PushFont implementation that sets global scale for each font
-	Font16 = ImIO.Fonts().AddFontFromMemoryTTF(uintptr(quicksandPtr), int32(len(quicksandBytes)), 16)
-	Font20 = ImIO.Fonts().AddFontFromMemoryTTF(uintptr(quicksandPtr), int32(len(quicksandBytes)), 20)
-	Font24 = ImIO.Fonts().AddFontFromMemoryTTF(uintptr(quicksandPtr), int32(len(quicksandBytes)), 24)
-	Font32 = ImIO.Fonts().AddFontFromMemoryTTF(uintptr(quicksandPtr), int32(len(quicksandBytes)), 32)
-	Font48 = ImIO.Fonts().AddFontFromMemoryTTF(uintptr(quicksandPtr), int32(len(quicksandBytes)), 48)
-
 	fontAwesomeBytes, err := assets.GetBytes("assets/fonts/Font Awesome 6 Free-Solid-900.otf")
 	if err != nil {
 		panic(err)
 	}
 
+	qsPtr := C.malloc(C.size_t(len(quicksandBytes)))
+	awPtr := C.malloc(C.size_t(len(fontAwesomeBytes)))
+
+	quicksandPtr := unsafe.Pointer(&quicksandBytes[0])
 	awesomePtr := unsafe.Pointer(&fontAwesomeBytes[0])
 
-	//fontawesome is quite large so for now we will load only needed glyphs
-	awesomeBuilder := imgui.NewFontGlyphRangesBuilder()
-	awesomeBuilder.AddChar(0xF04B) // play
-	awesomeBuilder.AddChar(0xF04D) // stop
-	awesomeBuilder.AddChar('+')
-	awesomeBuilder.AddChar(0xF068) // minus
-	awesomeBuilder.AddChar(0xF0AD) // wrench
-	awesomeBuilder.AddChar(0xE163) // display
-	awesomeBuilder.AddChar(0xF028) // volume-high
-	awesomeBuilder.AddChar(0xF11C) // keyboard
-	awesomeBuilder.AddChar(0xF245) // arrow-pointer
-	awesomeBuilder.AddChar(0xE599) // worm
-	awesomeBuilder.AddChar(0xF0CB) // list-ol
-	awesomeBuilder.AddChar(0xF03D) // video
-	awesomeBuilder.AddChar(0xF882) // arrow-up-z-a
-	awesomeBuilder.AddChar(0xF15D) // arrow-down-a-z
-	awesomeBuilder.AddChar(0xF084) // key
-	awesomeBuilder.AddChar(0xF7A2) // earth-europe
-	awesomeBuilder.AddChar(0xF192) // circle-dot
-	awesomeBuilder.AddChar(0xF1E0) // share-nodes
-	awesomeBuilder.AddChar(0xF1FC) // paintbrush
-	awesomeBuilder.AddChar(0xF43C) // chess-board
-	awesomeBuilder.AddChar(0xF188) // bug
-	awesomeBuilder.AddChar(0xF2EA) // rotate-left
-
-	awesomeRange := imgui.NewGlyphRange()
-	awesomeBuilder.BuildRanges(awesomeRange)
-
-	FontAw = ImIO.Fonts().AddFontFromMemoryTTFV(uintptr(awesomePtr), int32(len(fontAwesomeBytes)), 32, imgui.NewFontConfig(), awesomeRange.Data())
-
-	img0, w0, h0, _ := ImIO.Fonts().TextureDataAsAlpha8()
-	img1, _, _, _ := ImIO.Fonts().GetTextureDataAsRGBA32()
+	C.memcpy(qsPtr, quicksandPtr, C.size_t(len(quicksandBytes)))
+	C.memcpy(awPtr, awesomePtr, C.size_t(len(fontAwesomeBytes)))
 
 	runtime.KeepAlive(quicksandPtr)
 	runtime.KeepAlive(awesomePtr)
 
-	tex = texture.NewTextureSingleFormat(int(w0), int(h0), texture.Red, 0) // mip-mapping fails miserably because igui doesn't apply padding to sub-textures
-
-	size := w0 * h0
-
-	pixels := (*[1 << 30]uint8)(img0)[:size:size] // cast from unsafe pointer to uint8 slice
-
-	tex.SetData(0, 0, int(w0), int(h0), pixels)
-
-	C.free(img0) //Reduce some memory, seems that imgui doesn't explode
-	C.free(img1) //Reduce some memory, seems that imgui doesn't explode
+	//TODO: switch from multiple fonts to own custom PushFont implementation that sets global scale for each font
+	Font = ImIO.Fonts().AddFontFromMemoryTTF(uintptr(qsPtr), int32(len(quicksandBytes)))
+	FontAw = ImIO.Fonts().AddFontFromMemoryTTF(uintptr(awPtr), int32(len(fontAwesomeBytes)))
 
 	//endregion
 
@@ -542,11 +499,18 @@ func DrawImgui() {
 
 	rShader.SetUniform("proj", mgl32.Ortho(0, float32(w), float32(h), 0, -1, 1))
 
-	tex.Bind(0)
-	rShader.SetUniform("tex", 0)
-	rShader.SetUniform("texRGBA", 0)
+	imTextures := drawData.Textures()
+	if imTextures.Size() > 0 {
+		for _, tex := range imTextures.Slice() {
+			if tex.Status() != imgui.TextureStatusOK {
+				handleTexture(tex)
+			}
+		}
+	}
 
-	lastBound := imgui.TextureID{Data: 0}
+	rShader.SetUniform("tex", 0)
+
+	lastBound := imgui.TextureID(0)
 
 	vao.Bind()
 	ibo.Bind()
@@ -563,7 +527,7 @@ func DrawImgui() {
 		vertexBuffer, vertexBufferSize := list.GetVertexBuffer()
 		vertexBufferSize /= 4 // convert size in bytes to size in float32
 
-		vertices := (*[1 << 30]float32)(vertexBuffer)[:vertexBufferSize:vertexBufferSize] // cast from unsafe to float32 slice
+		vertices := unsafe.Slice((*float32)(vertexBuffer), vertexBufferSize) // cast from unsafe to float32 slice
 
 		if vao.GetVBO("default").Capacity() < vertexBufferSize {
 			vao.Resize("default", vertexBufferSize) // resize, if necessary
@@ -574,27 +538,21 @@ func DrawImgui() {
 		indexBuffer, indexBufferSize := list.GetIndexBuffer()
 		indexBufferSize /= 2
 
-		indices := (*[1 << 30]uint16)(indexBuffer)[:indexBufferSize:indexBufferSize]
+		indices := unsafe.Slice((*uint16)(indexBuffer), indexBufferSize)
 
 		ibo.SetData(0, indices)
 
 		for _, cmd := range list.Commands() {
-			cId := cmd.TextureId()
-			if cId != lastBound {
-				if cId.Data == 0 {
-					rShader.SetUniform("texRGBA", 0)
-					tex.Bind(0)
-				} else {
-					rShader.SetUniform("texRGBA", 1)
-					gl.BindTextureUnit(0, uint32(cId.Data))
-				}
-
-				lastBound = cId
-			}
-
 			if cmd.HasUserCallback() {
 				cmd.CallUserCallback(list)
 			} else {
+				cId := cmd.TexID()
+				if cId != lastBound {
+					gl.BindTextureUnit(0, uint32(cId))
+
+					lastBound = cId
+				}
+
 				clipRect := cmd.ClipRect() //.Times(scaling)
 				clipRect.X *= scaling
 				clipRect.Y *= scaling
@@ -615,6 +573,66 @@ func DrawImgui() {
 	ibo.Unbind()
 	vao.Unbind()
 	rShader.Unbind()
+}
+
+var textures = make(map[uint32]*texture.TextureSingle)
+
+func handleTexture(tex imgui.TextureData) {
+	if tex.Status() == imgui.TextureStatusWantCreate {
+		if tex.TexID() != 0 {
+			panic("invalid texture state: want to create existing texture")
+		}
+
+		if tex.Format() != imgui.TextureFormatRGBA32 {
+			panic("invalid texture state: want to create non rgba32 texture")
+		}
+
+		tW := int(tex.Width())
+		tH := int(tex.Height())
+
+		// go vet workaround
+		data := unsafe.Slice(*(**byte)(unsafe.Pointer(new(tex.Pixels()))), 4*tW*tH)
+
+		gTex := texture.NewTextureSingle(tW, tH, 0)
+		gTex.SetData(0, 0, tW, tH, data)
+
+		tex.SetTexID(imgui.TextureID(gTex.GetID()))
+		tex.SetStatus(imgui.TextureStatusOK)
+
+		textures[gTex.GetID()] = gTex
+	} else if tex.Status() == imgui.TextureStatusWantUpdates {
+		texId := uint32(tex.TexID())
+
+		gTex, ok := textures[texId]
+		if !ok {
+			panic("invalid texture state: missing gl texture")
+		}
+
+		for _, rc := range tex.Updates().Slice() {
+			uW := int(rc.W())
+			uH := int(rc.H())
+
+			rPtr := tex.PixelsAt(int32(rc.X()), int32(rc.Y()))
+
+			gTex.SetDataBuf(int(rc.X()), int(rc.Y()), uW, uH, int(tex.Width()), rPtr)
+		}
+
+		tex.SetStatus(imgui.TextureStatusOK)
+	} else if tex.Status() == imgui.TextureStatusWantDestroy {
+		texId := uint32(tex.TexID())
+
+		gTex, ok := textures[texId]
+		if !ok {
+			panic("invalid texture state: gl texture already destroyed")
+		}
+
+		gTex.Dispose()
+
+		delete(textures, texId)
+
+		tex.SetTexID(imgui.TextureID(0))
+		tex.SetStatus(imgui.TextureStatusDestroyed)
+	}
 }
 
 func handleDragScroll() (ret bool) {

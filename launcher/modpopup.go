@@ -1,9 +1,11 @@
 package launcher
 
 import (
-	"github.com/AllenDang/cimgui-go/imgui"
-	"github.com/wieku/danser-go/app/beatmap/difficulty"
 	"strings"
+
+	"github.com/AllenDang/cimgui-go/imgui"
+
+	"github.com/wieku/danser-go/app/beatmap/difficulty"
 )
 
 type modPopup struct {
@@ -223,7 +225,7 @@ func (m *modPopup) drawSettingsBase(mask difficulty.Modifier, draw func()) {
 			imgui.Dummy(vec2(0, 10))
 		}
 
-		imgui.PushFont(Font32)
+		imgui.PushFont(Font, 32)
 		imgui.TextUnformatted((m.bld.diff.Mods & mask).StringFull()[0] + ":")
 		imgui.PopFont()
 		imgui.WindowDrawList().AddLine(imgui.CursorScreenPos(), imgui.CursorScreenPos().Add(vec2(contentRegionMax().X, 0)), packColor(*imgui.StyleColorVec4(imgui.ColSeparator)))
@@ -309,7 +311,7 @@ func (m *modPopup) modCheckbox(mod, incompat, required difficulty.Modifier) (ret
 
 		imgui.TextUnformatted(modTip)
 
-		imgui.PushFont(Font20)
+		imgui.PushFont(Font, 20)
 		imgui.PushTextWrapPosV(300)
 
 		if !req {

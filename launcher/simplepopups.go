@@ -113,7 +113,10 @@ func drawRecordMenu(bld *builder) {
 
 func drawAbout(dTex texture.Texture) {
 	centerTable("about1", -1, func() {
-		imgui.Image(imgui.TextureID{Data: uintptr(dTex.GetID())}, vec2(100, 100))
+		texRef := imgui.NewTextureRefTextureID(imgui.TextureID(dTex.GetID()))
+		defer texRef.Destroy()
+
+		imgui.Image(*texRef, vec2(100, 100))
 	})
 
 	centerTable("about2", -1, func() {
@@ -189,7 +192,7 @@ func drawLauncherConfig() {
 
 	volume := int32(launcherConfig.PreviewVolume * 100)
 
-	imgui.PushFont(Font16)
+	imgui.PushFont(Font, 16)
 
 	imgui.SetNextItemWidth(-1)
 

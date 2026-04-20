@@ -110,7 +110,7 @@ func (editor *settingsEditor) drawEditor() {
 
 	currentRunning := editor.danserRunning
 
-	imgui.PushFont(Font20)
+	imgui.PushFont(Font, 20)
 
 	height := imgui.ContentRegionAvail().Y
 	if currentRunning {
@@ -133,7 +133,7 @@ func (editor *settingsEditor) drawEditor() {
 
 			imgui.PushStyleColorVec4(imgui.ColChildBg, vec4(0, 0, 0, .5))
 
-			imgui.PushFont(FontAw)
+			imgui.PushFont(FontAw, 32)
 			{
 
 				imgui.PushStyleVarFloat(imgui.StyleVarScrollbarSize, 9)
@@ -163,7 +163,7 @@ func (editor *settingsEditor) drawEditor() {
 
 			imgui.TableNextColumn()
 
-			imgui.PushFont(Font32)
+			imgui.PushFont(Font, 32)
 			{
 				imgui.SetNextItemWidth(-1)
 
@@ -184,7 +184,7 @@ func (editor *settingsEditor) drawEditor() {
 
 				editor.blockSearch = handleDragScroll()
 
-				imgui.PushFont(Font20)
+				imgui.PushFont(Font, 20)
 
 				editor.drawSettings()
 
@@ -203,7 +203,7 @@ func (editor *settingsEditor) drawEditor() {
 
 	imgui.EndChild()
 
-	imgui.PushFont(Font20)
+	imgui.PushFont(Font, 20)
 
 	if currentRunning {
 		centerTable("tabdanser is running", -1, func() {
@@ -333,7 +333,7 @@ func (editor *settingsEditor) buildNavigationFor(u any) {
 			}
 
 			if imgui.IsItemHovered() {
-				imgui.PushFont(Font24)
+				imgui.PushFont(Font, 24)
 				imgui.BeginTooltip()
 				setTooltip(label)
 				imgui.EndTooltip()
@@ -411,7 +411,7 @@ func (editor *settingsEditor) buildMainSection(jsonPath, sPath, name string, u r
 
 	posLocal := imgui.CursorPos()
 
-	imgui.PushFont(Font48)
+	imgui.PushFont(Font, 48)
 	imgui.TextUnformatted(name)
 
 	imgui.PopFont()
@@ -483,7 +483,7 @@ func (editor *settingsEditor) subSectionTempl(name string, jsonPath string, d re
 
 	imgui.BeginGroup()
 
-	imgui.PushFont(Font24)
+	imgui.PushFont(Font, 24)
 	imgui.TextUnformatted(strings.ToUpper(name))
 
 	if tVal, ok := d.Tag.Lookup("wiki"); ok {
@@ -504,7 +504,7 @@ func (editor *settingsEditor) subSectionTempl(name string, jsonPath string, d re
 
 			imgui.TableNextColumn()
 
-			imgui.PushFont(Font20)
+			imgui.PushFont(Font, 20)
 
 			if imgui.Button(spl[0] + "##wikiBtn" + jsonPath) {
 				platform.OpenURL(spl[1])
@@ -555,8 +555,7 @@ func (editor *settingsEditor) buildArray(jsonPath, sPath, name string, u reflect
 	}
 
 	editor.subSectionTempl(name, jsonPath, d, func() {
-		ImIO.SetFontGlobalScale(20.0 / 32)
-		imgui.PushFont(FontAw)
+		imgui.PushFont(FontAw, 20)
 
 		if imgui.Button("+" + jsonPath) {
 			if fName, ok := d.Tag.Lookup("new"); ok {
@@ -568,7 +567,6 @@ func (editor *settingsEditor) buildArray(jsonPath, sPath, name string, u reflect
 			}
 		}
 
-		ImIO.SetFontGlobalScale(1)
 		imgui.PopFont()
 	}, func() {
 		for j := 0; j < u.Len(); j++ {
@@ -624,14 +622,12 @@ func (editor *settingsEditor) buildArrayElement(jsonPath, sPath string, u reflec
 		imgui.Dummy(vec2(1, 0))
 		imgui.SameLine()
 
-		ImIO.SetFontGlobalScale(0.625)
-		imgui.PushFont(FontAw)
+		imgui.PushFont(FontAw, 20)
 
 		imgui.SetCursorPos(vec2(imgui.CursorPosX(), (posLocal.Y+posLocal1.Y-imgui.FrameHeight())/2))
 
 		removed = imgui.Button("\uF068" + jsonPath)
 
-		ImIO.SetFontGlobalScale(1)
 		imgui.PopFont()
 
 		imgui.SameLine()

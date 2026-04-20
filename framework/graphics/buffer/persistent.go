@@ -3,6 +3,7 @@ package buffer
 import (
 	"fmt"
 	"runtime"
+	"unsafe"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/go-gl/gl/v3.3-core/gl"
@@ -35,7 +36,7 @@ func NewPersistentBufferObject(maxFloats int) *PersistentBufferObject {
 
 	pt := gl.MapNamedBufferRange(vbo.handle, 0, maxFloats*4, gl.MAP_PERSISTENT_BIT|gl.MAP_WRITE_BIT|gl.MAP_COHERENT_BIT)
 
-	vbo.data = (*[1 << 30]float32)(pt)[:maxFloats:maxFloats]
+	vbo.data = unsafe.Slice((*float32)(pt), maxFloats)
 
 	runtime.SetFinalizer(vbo, (*PersistentBufferObject).Dispose)
 
@@ -73,7 +74,7 @@ func (vbo *PersistentBufferObject) Resize(newCapacity int) {
 
 	pt := gl.MapNamedBufferRange(vbo.handle, 0, newCapacity*4, gl.MAP_PERSISTENT_BIT|gl.MAP_WRITE_BIT|gl.MAP_COHERENT_BIT)
 
-	vbo.data = (*[1 << 30]float32)(pt)[:newCapacity:newCapacity]
+	vbo.data = unsafe.Slice((*float32)(pt), newCapacity)
 
 	vbo.offset = 0
 }

@@ -347,7 +347,12 @@ func (set *OsuRuleSet) printEndTable() {
 
 	tableString := &strings.Builder{}
 	table := tablewriter.NewWriter(tableString)
-	table.SetHeader([]string{"#", "Player", "Score", "Accuracy", "Grade", "300", "100", "50", "Miss", "Combo", "Max Combo", "Mods", "PP"})
+
+	defer func() {
+		_ = table.Close()
+	}()
+
+	table.Header("#", "Player", "Score", "Accuracy", "Grade", "300", "100", "50", "Miss", "Combo", "Max Combo", "Mods", "PP")
 
 	for i, c := range cs {
 		var data []string
@@ -363,11 +368,11 @@ func (set *OsuRuleSet) printEndTable() {
 		data = append(data, utils.Humanize(set.cursors[c].scoreProcessor.GetCombo()))
 		data = append(data, utils.Humanize(set.cursors[c].score.Combo))
 		data = append(data, set.cursors[c].player.diff.GetModString())
-		data = append(data, fmt.Sprintf("%.2f", set.cursors[c].score.PP.Total))
-		table.Append(data)
+		data = append(data, fmt.Sprintf("%.3f", set.cursors[c].score.PP.Total))
+		_ = table.Append(data)
 	}
 
-	table.Render()
+	_ = table.Render()
 
 	for s := range strings.SplitSeq(tableString.String(), "\n") {
 		log.Println(s)

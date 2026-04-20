@@ -694,7 +694,7 @@ func (l *launcher) drawImgui() {
 func (l *launcher) drawMain() {
 	w := contentRegionMax().X
 
-	imgui.PushFont(Font24)
+	imgui.PushFont(Font, 24)
 
 	if imgui.BeginTableV("ltpanel", 2, imgui.TableFlagsSizingStretchProp, vec2(float32(w)/2, 0), -1) {
 		imgui.TableSetupColumnV("ltpanel1", imgui.TableColumnFlagsWidthFixed, 0, imgui.ID(0))
@@ -786,7 +786,7 @@ func (l *launcher) drawMain() {
 func (l *launcher) drawSplash() {
 	w, h := contentRegionMax().X, contentRegionMax().Y
 
-	imgui.PushFont(Font48)
+	imgui.PushFont(Font, 48)
 
 	splText := strings.Split(l.splashText, "\n")
 
@@ -893,7 +893,7 @@ func (l *launcher) drawControls() {
 func (l *launcher) selectReplay() {
 	bSize := vec2((imgui.WindowWidth()-40)/4, imgui.TextLineHeight()*2)
 
-	imgui.PushFont(Font32)
+	imgui.PushFont(Font, 32)
 
 	if imgui.ButtonV("Select replay", bSize) {
 		dir := l.currentConfig.General.GetReplaysDir()
@@ -909,7 +909,7 @@ func (l *launcher) selectReplay() {
 
 	imgui.PopFont()
 
-	imgui.PushFont(Font20)
+	imgui.PushFont(Font, 20)
 	imgui.IndentV(5)
 
 	if l.bld.currentReplay != nil {
@@ -1020,7 +1020,7 @@ func (l *launcher) trySelectReplay(replay *knockoutReplay) {
 func (l *launcher) newKnockout() {
 	bSize := vec2((imgui.WindowWidth()-40)/4, imgui.TextLineHeight()*2)
 
-	imgui.PushFont(Font32)
+	imgui.PushFont(Font, 32)
 
 	if imgui.ButtonV("Select replays", bSize) {
 		kPath := getAbsPath(launcherConfig.LastKnockoutPath)
@@ -1040,7 +1040,7 @@ func (l *launcher) newKnockout() {
 
 	imgui.PopFont()
 
-	imgui.PushFont(Font20)
+	imgui.PushFont(Font, 20)
 
 	imgui.IndentV(5)
 
@@ -1127,7 +1127,7 @@ func (l *launcher) loadReplay(p string) (*knockoutReplay, error) {
 func (l *launcher) showSelect() {
 	bSize := vec2((imgui.WindowWidth()-40)/4, imgui.TextLineHeight()*2)
 
-	imgui.PushFont(Font32)
+	imgui.PushFont(Font, 32)
 
 	if imgui.ButtonV("Select map", bSize) {
 		if l.selectWindow == nil {
@@ -1140,7 +1140,7 @@ func (l *launcher) showSelect() {
 
 	imgui.PopFont()
 
-	imgui.PushFont(Font20)
+	imgui.PushFont(Font, 20)
 
 	imgui.IndentV(5)
 
@@ -1214,7 +1214,7 @@ func (l *launcher) drawLowerPanel() {
 			imgui.ProgressBarV(l.recordProgress, vec2(w/2, imgui.FrameHeight()), l.recordStatus)
 
 			if l.encodeInProgress {
-				imgui.PushFont(Font16)
+				imgui.PushFont(Font, 16)
 
 				cPos := imgui.CursorPos()
 
@@ -1248,7 +1248,7 @@ func (l *launcher) drawLowerPanel() {
 	imgui.SetCursorPos(vec2(contentRegionMax().X-w/2.5, h-imgui.FrameHeightWithSpacing()*2))
 
 	centerTable("dansebutton", w/2.5, func() {
-		imgui.PushFont(Font48)
+		imgui.PushFont(Font, 48)
 		{
 			dRun := l.danserRunning && launcherConfig.CurrentPMode == Record
 

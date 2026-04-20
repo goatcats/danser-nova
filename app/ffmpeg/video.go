@@ -75,7 +75,7 @@ func createPBO(format pixconv.PixFmt) *PBO {
 
 	pbo.memPointer = gl.MapNamedBufferRange(pbo.handle, 0, glSize, gl.MAP_PERSISTENT_BIT|gl.MAP_COHERENT_BIT|gl.MAP_READ_BIT)
 
-	pbo.data = (*[1 << 30]byte)(pbo.memPointer)[:glSize:glSize]
+	pbo.data = unsafe.Slice((*byte)(pbo.memPointer), glSize)
 
 	return pbo
 }

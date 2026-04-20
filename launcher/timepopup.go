@@ -70,7 +70,7 @@ func (m *timePopup) drawTimeMenu() {
 	end := &m.bld.end
 
 	imgui.TextUnformatted("Start time:")
-	imgui.PushFont(Font16)
+	imgui.PushFont(Font, 16)
 	imgui.SetNextItemWidth(-1)
 	if sliderIntSlide("##Start time", &start.value, 0, end.ogValue-1, util.FormatSeconds(int(start.value)), imgui.SliderFlagsNoInput) {
 		start.changed = start.value != start.ogValue
@@ -82,7 +82,7 @@ func (m *timePopup) drawTimeMenu() {
 	}
 
 	imgui.TextUnformatted("End time:")
-	imgui.PushFont(Font16)
+	imgui.PushFont(Font, 16)
 	imgui.SetNextItemWidth(-1)
 	if sliderIntSlide("##End time", &end.value, 1, end.ogValue, util.FormatSeconds(int(end.value)), imgui.SliderFlagsNoInput) {
 		end.changed = end.value != end.ogValue
@@ -176,6 +176,9 @@ func (m *timePopup) drawStrainGraph() {
 			viewport.Pop()
 		}
 
-		imgui.Image(imgui.TextureID{Data: uintptr(m.fbo.Texture().GetID())}, vec2(float32(sWidth), float32(sHeight)))
+		texRef := imgui.NewTextureRefTextureID(imgui.TextureID(m.fbo.Texture().GetID()))
+		defer texRef.Destroy()
+
+		imgui.Image(*texRef, vec2(float32(sWidth), float32(sHeight)))
 	}
 }

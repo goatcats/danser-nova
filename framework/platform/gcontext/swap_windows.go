@@ -3,8 +3,15 @@
 package gcontext
 
 import (
-	"github.com/TheTitanrain/w32"
+	"syscall"
+
 	"github.com/Zyko0/go-sdl3/sdl"
+)
+
+var (
+	moddwmapi = syscall.NewLazyDLL("dwmapi.dll")
+
+	procDwmFlush = moddwmapi.NewProc("DwmFlush")
 )
 
 var winInterval = 1
@@ -24,7 +31,7 @@ func SetSwapInterval(interval int) {
 func SwapBuffers() {
 	if !fullscreen {
 		for range winInterval {
-			w32.DwmFlush() // For some reason SDL doesn't do this so...
+			_, _, _ = procDwmFlush.Call() // For some reason SDL doesn't do this so...
 		}
 	}
 
