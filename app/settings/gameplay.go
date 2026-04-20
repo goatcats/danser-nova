@@ -244,6 +244,7 @@ func initGameplay() *gameplay {
 		IgnoreFailsInReplays:    false,
 		PPVersion:               "latest",
 		LazerClassicScore:       false,
+		AlwaysSkipIntro:         false,
 	}
 }
 
@@ -274,6 +275,7 @@ type gameplay struct {
 	IgnoreFailsInReplays    bool
 	PPVersion               string `liveedit:"false" label:"PP counter version" combo:"211112|2021 pp rework (First Xexxar),220930|2022 pp rework,241007|2024 pp rework,250306|2025 Q1 update,26xxxx|Upcoming,latest|2025 Q4 update (latest)"`
 	LazerClassicScore       bool   `label:"Use \"Classic\" score for osu!lazer plays"`
+	AlwaysSkipIntro         bool   `liveedit:"false"`
 }
 
 type boundaries struct {

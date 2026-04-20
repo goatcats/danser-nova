@@ -552,6 +552,7 @@ func (l *launcher) Draw() {
 	if l.currentConfig != nil {
 		settings.Audio.GeneralVolume = l.currentConfig.Audio.GeneralVolume
 		settings.Audio.MusicVolume = l.currentConfig.Audio.MusicVolume
+		settings.Gameplay.AlwaysSkipIntro = l.currentConfig.Gameplay.AlwaysSkipIntro
 	}
 
 	t := qpc.GetMilliTimeF()

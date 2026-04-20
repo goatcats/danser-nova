@@ -64,7 +64,29 @@ func newTimePopup(bld *builder) *timePopup {
 }
 
 func (m *timePopup) drawTimeMenu() {
+	locked := settings.Gameplay.AlwaysSkipIntro
+
+	if locked {
+		imgui.BeginGroup()
+		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+		imgui.PushStyleColorVec4(imgui.ColText, vec4(0.6, 0.6, 0.6, 1))
+	}
+
 	imgui.Checkbox("Skip map's beginning", &m.bld.skip)
+
+	if locked {
+		imgui.PopStyleColor()
+		imgui.PopItemFlag()
+		imgui.EndGroup()
+
+		if imgui.IsItemHovered() {
+			imgui.BeginTooltip()
+
+			imgui.TextUnformatted("Always skipped due to current config")
+
+			imgui.EndTooltip()
+		}
+	}
 
 	start := &m.bld.start
 	end := &m.bld.end
