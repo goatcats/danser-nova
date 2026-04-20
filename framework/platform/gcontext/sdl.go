@@ -241,13 +241,13 @@ func SetCursorVisible(visible bool) {
 func GetLeftClick() bool {
 	flags, _, _ := sdl.GetMouseState()
 
-	return flags&sdl.BUTTON_LEFT != 0
+	return flags&(1<<(sdl.BUTTON_LEFT-1)) != 0
 }
 
 func GetRightClick() bool {
 	flags, _, _ := sdl.GetMouseState()
 
-	return flags&sdl.BUTTON_RIGHT != 0
+	return flags&(1<<(sdl.BUTTON_RIGHT-1)) != 0
 }
 
 func GetKeyState(key sdl.Keycode) Action {
