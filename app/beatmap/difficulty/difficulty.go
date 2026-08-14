@@ -429,6 +429,22 @@ func (diff *Difficulty) GetScoreMultiplier() float64 {
 		baseMultiplier *= mult
 	}
 
+	if diff.CheckModActive(DifficultyAdjust) {  
+		mult := 1.0  
+  
+		od := diff.GetOD()  
+		cs := diff.GetCS()  
+		hp := diff.GetHP()  
+  
+		if math.Abs(od-diff.GetBaseOD()) > 0.001 ||  
+			math.Abs(cs-diff.GetBaseCS()) > 0.001 ||  
+			math.Abs(hp-diff.GetBaseHP()) > 0.001 {  
+			mult = 0.5  
+		}  
+  
+		baseMultiplier *= mult  
+	}
+
 	return baseMultiplier
 }
 

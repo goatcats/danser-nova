@@ -204,9 +204,9 @@ func (mods Modifier) GetScoreMultiplier() float64 {
 		multiplier *= 0.96
 	}
 
-	if mods&DifficultyAdjust > 0 {
-		multiplier *= 0.5
-	}
+	// if mods&DifficultyAdjust > 0 {
+	// 	multiplier *= 0.5
+	// }
 
 	return multiplier
 }
