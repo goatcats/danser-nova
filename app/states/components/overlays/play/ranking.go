@@ -234,7 +234,7 @@ func (panel *RankingPanel) loadMods() {
 	for i, s := range mods {
 		modSpriteName := "selection-mod-" + strings.ToLower(s)
 
-		mod := sprite.NewSpriteSingle(skin.GetTexture(modSpriteName), 6+float64(i), vector.NewVec2d(panel.ScaledWidth+offset, 416), vector.Centre)
+		mod := sprite.NewSpriteSingle(skin.GetTextureSource(modSpriteName, skin.LOCAL), 6+float64(i), vector.NewVec2d(panel.ScaledWidth+offset, 416), vector.Centre)
 
 		panel.manager.Add(mod)
 

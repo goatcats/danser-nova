@@ -1032,7 +1032,7 @@ func (overlay *ScoreOverlay) initMods() {
 
 		modSpriteName := "selection-mod-" + strings.ToLower(nameSplit[0])
 
-		modIcon := sprite.NewSpriteSingle(skin.GetTexture(modSpriteName), float64(i), vector.NewVec2d(offsetX, offsetY), vector.Centre)
+		modIcon := sprite.NewSpriteSingle(skin.GetTextureSource(modSpriteName, skin.LOCAL), float64(i), vector.NewVec2d(offsetX, offsetY), vector.Centre)
 		addMod(modIcon, i, 1)
 
 		for subI := 1; subI < len(nameSplit); subI++ {
